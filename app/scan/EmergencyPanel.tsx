@@ -28,11 +28,11 @@ export default function EmergencyPanel({ em, verified, t }: { em: Emergency; ver
             <dd dir="ltr" className="text-start">{em.dateOfBirth}</dd>
           </>
         )}
-        {em.bloodType && (
-          <>
-            <dt className="text-gray-600">{t.blood}</dt>
-            <dd dir="ltr" className="text-start text-2xl font-bold">{em.bloodType}</dd>
-          </>
+        <dt className="text-gray-600">{t.blood}</dt>
+        {em.bloodType ? (
+          <dd dir="ltr" className="text-start text-2xl font-bold">{em.bloodType}</dd>
+        ) : (
+          <dd>{t.bloodUnknown}</dd>
         )}
         <dt className="text-gray-600">{t.id}</dt>
         <dd dir="ltr" className="text-start font-mono">{em.id}</dd>
