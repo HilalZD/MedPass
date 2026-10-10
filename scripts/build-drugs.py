@@ -43,6 +43,7 @@ Needs: pip install pandas xlrd openpyxl
 """
 
 import csv
+import difflib
 import json
 import math
 import random
@@ -287,7 +288,8 @@ def match_aman(drugs: list[dict], aman: list[dict]) -> tuple[list[dict], Counter
                 how["matched"] += 1
                 ingredient = "" if a["ingredient"] in NOT_INGREDIENTS else a["ingredient"]
                 for d in cands:
-                    d["covered"] = True
+                    d["covered"] = True  # provisional: re-checked against MoPH ingredients in check_coverage()
+                    d["_aman_name"] = a["name"]
                     if ingredient:
                         d.setdefault("_cands", {})["aman"] = ingredient
         if reason:
@@ -435,6 +437,35 @@ def join_moph(drugs: list[dict]) -> tuple[Counter, list[tuple[dict, dict]]]:
 PRIORITY = ["moph", "aman", "curated", "generic name"]
 
 
+def ingredients_agree(aman: str, moph: str) -> bool:
+    """Every ingredient AMAN names must be present in the MoPH ingredient: at least half of
+    its words (3+ letters) are close to a MoPH word. Tolerates salts and French spellings
+    ('cisplatine' ~ 'cisplatin', 'erythropoetin' ~ 'erythropoietin'), but catches a different
+    product ('lamivudine + tenofovir' vs 'lamivudine': tenofovir is missing).
+    Known limit: a MoPH product with an EXTRA ingredient that AMAN doesn't mention still passes
+    (MoPH's comma-separated names, e.g. Myozyme's, make that direction unreliable)."""
+    moph_words = re.findall(r"[a-z0-9]+", moph)
+    close = lambda x: any(difflib.SequenceMatcher(None, x, w).ratio() >= 0.85 for w in moph_words)
+    for part in aman.split(" + "):
+        words = [w for w in re.findall(r"[a-z0-9]+", part) if len(w) >= 3]
+        if words and sum(close(w) for w in words) * 2 < len(words):
+            return False
+    return True
+
+
+def check_coverage(drugs: list[dict]) -> list[tuple]:
+    """AMAN coverage was matched on brand + strength only. Keep covered = true only when
+    the AMAN ingredient agrees with the official MoPH ingredient (when both are known)."""
+    removed = []
+    for d in drugs:
+        cands = d.get("_cands", {})
+        if d["covered"] and cands.get("aman") and cands.get("moph") and not ingredients_agree(cands["aman"], cands["moph"]):
+            d["covered"] = False
+            removed.append((d["brand"], d["strength"], d.pop("_aman_name", ""), cands["aman"], cands["moph"]))
+        d.pop("_aman_name", None)
+    return removed
+
+
 def same_ingredient(a: str, b: str) -> bool:
     """Tolerant comparison for conflict reports: 'metformin' == 'metformin hcl',
     'atorvastatin' == 'atorvastatin (calcium)'; combinations must agree on every part."""
@@ -498,6 +529,11 @@ def main() -> None:
     print(f"\n== MoPH website join ({MOPH_WEB[-1].name}) ==")
     for k, v in moph_outcome.most_common():
         print(f"  {k}: {v}")
+
+    uncovered = check_coverage(drugs)
+    print(f"\n== AMAN coverage re-check against MoPH ingredients: {len(uncovered)} removed ==")
+    for brand, strength, aman_name, aman_ing, moph_ing in uncovered:
+        print(f"  {brand} {strength}: AMAN entry {aman_name!r} is {aman_ing!r}, MoPH says {moph_ing!r} -> covered = false")
 
     chosen_from, conflicts = resolve_ingredients(drugs, curated["aliases"])
     print(f"\n== Ingredient sources (priority {' > '.join(PRIORITY)}) ==")
