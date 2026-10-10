@@ -48,18 +48,6 @@ export function ErrorBox({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// "Did you mean...?" for unreadable meds.
-// TODO: replace this stub with suggest() from lib/match.ts once my teammate
-// pushes it. Until then there are never suggestions, and the clinician uses
-// Edit (typed name, autocompleted from the MoPH list) or Remove.
-// ---------------------------------------------------------------------------
-export function suggest(rawText: string, limit: number): DrugRow[] {
-  void rawText;
-  void limit;
-  return [];
-}
-
 // drugs.json, loaded once in the browser (the service worker caches it).
 export function useDrugs(): DrugRow[] {
   const [drugs, setDrugs] = useState<DrugRow[]>([]);

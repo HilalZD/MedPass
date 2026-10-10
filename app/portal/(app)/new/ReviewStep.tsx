@@ -4,10 +4,10 @@
 // "Next" stays locked until every yellow and unreadable medicine is resolved:
 // confirmed (Correct), fixed (Edit / pick a suggestion) or removed.
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { unresolvedMeds, type DraftMed, type ExtractedDraft } from "@/lib/extract";
-import type { DrugRow } from "@/lib/match";
-import { DrugNameInput, FromPaper, btn, input, statusLabel, statusStyle, suggest, useDrugs } from "./ui";
+import { createMatcher, type DrugRow } from "@/lib/match";
+import { DrugNameInput, FromPaper, btn, input, statusLabel, statusStyle, useDrugs } from "./ui";
 
 type Props = {
   draft: ExtractedDraft;
@@ -20,6 +20,9 @@ type Props = {
 
 export default function ReviewStep({ draft, setDraft, warnings, photos, onBack, onNext }: Props) {
   const drugs = useDrugs();
+  // "Did you mean...?" for unreadable lines: my teammate's suggest() on the MoPH list.
+  const matcher = useMemo(() => (drugs.length ? createMatcher(drugs) : null), [drugs]);
+  const suggest = (raw: string) => matcher?.suggest(raw, 3) ?? [];
   const [zoom, setZoom] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
   const left = unresolvedMeds(draft);
@@ -60,7 +63,7 @@ export default function ReviewStep({ draft, setDraft, warnings, photos, onBack, 
       <h2 className="text-xl font-semibold">Medicines ({draft.meds.length})</h2>
       <ul className="flex flex-col gap-3">
         {draft.meds.map((m, i) => (
-          <MedItem key={i} med={m} drugs={drugs} onChange={(next) => updateMed(i, next)} />
+          <MedItem key={i} med={m} drugs={drugs} suggest={suggest} onChange={(next) => updateMed(i, next)} />
         ))}
       </ul>
       {adding ? (
@@ -143,7 +146,17 @@ export default function ReviewStep({ draft, setDraft, warnings, photos, onBack, 
 }
 
 // One medicine: "written on paper → we read it as", status, and the actions.
-function MedItem({ med, drugs, onChange }: { med: DraftMed; drugs: DrugRow[]; onChange: (m: DraftMed | null) => void }) {
+function MedItem({
+  med,
+  drugs,
+  suggest,
+  onChange,
+}: {
+  med: DraftMed;
+  drugs: DrugRow[];
+  suggest: (raw: string) => DrugRow[];
+  onChange: (m: DraftMed | null) => void;
+}) {
   const [editing, setEditing] = useState(false);
   const [rejected, setRejected] = useState(false);
 
@@ -164,7 +177,7 @@ function MedItem({ med, drugs, onChange }: { med: DraftMed; drugs: DrugRow[]; on
   }
 
   const unreadable = med.status === "unreadable";
-  const candidates = unreadable && med.raw && !rejected ? suggest(med.raw, 3) : [];
+  const candidates = unreadable && med.raw && !rejected ? suggest(med.raw) : [];
 
   return (
     <li className={`flex flex-col gap-2 rounded-xl border-s-8 border-2 p-3 ${statusStyle[med.status]}`}>
