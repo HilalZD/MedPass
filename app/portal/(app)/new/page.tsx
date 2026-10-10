@@ -9,6 +9,7 @@ import type { ExtractedDraft } from "@/lib/extract";
 import type { MedPassRecord } from "@/lib/types";
 import DetailsStep, { type Confirmed } from "./DetailsStep";
 import DoneStep from "./DoneStep";
+import type { PhotoValue } from "./PhotoField";
 import PhotoStep from "./PhotoStep";
 import PinStep from "./PinStep";
 import ReviewStep from "./ReviewStep";
@@ -23,6 +24,7 @@ export default function NewPatientPage() {
   const [warnings, setWarnings] = useState<string[]>([]);
   const [confirmed, setConfirmed] = useState<Confirmed>({ name: false, dob: false });
   const [saved, setSaved] = useState<{ record: MedPassRecord; pin: string } | null>(null);
+  const [photo, setPhoto] = useState<PhotoValue>({ photo: null, consent: false }); // optional card photo
 
   const go = (s: Step) => {
     setStep(s);
@@ -35,6 +37,7 @@ export default function NewPatientPage() {
     setWarnings([]);
     setConfirmed({ name: false, dob: false });
     setSaved(null);
+    setPhoto({ photo: null, consent: false });
     go("photos");
   }
 
@@ -74,6 +77,8 @@ export default function NewPatientPage() {
           setDraft={setDraft}
           confirmed={confirmed}
           setConfirmed={setConfirmed}
+          photo={photo}
+          setPhoto={setPhoto}
           onBack={() => go("review")}
           onNext={() => go("pin")}
         />
@@ -81,6 +86,7 @@ export default function NewPatientPage() {
       {step === "pin" && draft && (
         <PinStep
           draft={draft}
+          photo={photo}
           onBack={() => go("details")}
           onSaved={(record, pin) => {
             setSaved({ record, pin });
@@ -89,7 +95,9 @@ export default function NewPatientPage() {
           }}
         />
       )}
-      {step === "done" && saved && <DoneStep record={saved.record} pin={saved.pin} onAnother={reset} />}
+      {step === "done" && saved && (
+        <DoneStep record={saved.record} pin={saved.pin} photo={photo.consent ? photo.photo : null} onAnother={reset} />
+      )}
     </div>
   );
 }

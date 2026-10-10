@@ -213,6 +213,7 @@ export async function portalPayload(row: PatientRow, unlockedUntil: number, clin
     lastReissueReason: await lastReissueReason(row.id),
     updatedAt: row.updated_at,
     verifiedFields: row.verified_fields ?? [],
+    hasPhoto: Boolean(row.photo_path), // the photo itself only via /photo (two keys)
     unlockedUntil,
     facilityName: clinician.facilityName,
     log: await getAccessLog(row.id),

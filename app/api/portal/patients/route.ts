@@ -1,13 +1,15 @@
 import { z } from "zod";
 import { requireClinician } from "@/lib/db/auth";
 import { createPatient } from "@/lib/db/patients";
+import { jpegBytes, photoInputSchema, savePhoto } from "@/lib/db/photos";
 import { draftToRecord, reviewedDraftSchema, unresolvedMeds } from "@/lib/extract";
 
-// POST /api/portal/patients  { draft: <reviewed ExtractedDraft>, pin: "123456" }
-// → { record }  (the saved MedPassRecord, with its new MedPass ID)
+// POST /api/portal/patients  { draft: <reviewed ExtractedDraft>, pin: "123456", photo?: { photo, consent: true } }
+// → { record, photoSaved }  (the saved MedPassRecord, with its new MedPass ID)
 const bodySchema = z.object({
   draft: reviewedDraftSchema,
   pin: z.string().regex(/^\d{6}$/),
+  photo: photoInputSchema.optional(), // optional; consent must be ticked
 });
 
 export async function POST(request: Request) {
@@ -36,7 +38,20 @@ export async function POST(request: Request) {
       body.pin,
       clinician,
     );
-    return Response.json({ record });
+
+    // The photo is saved separately (private storage). If it fails, the patient
+    // is still saved; the clinician can add the photo later from the record.
+    let photoSaved = false;
+    const bytes = body.photo ? jpegBytes(body.photo.photo) : null;
+    if (bytes) {
+      try {
+        await savePhoto(record.id, bytes);
+        photoSaved = true;
+      } catch (err) {
+        console.error("patients: photo save failed", err instanceof Error ? err.message : "unknown");
+      }
+    }
+    return Response.json({ record, photoSaved });
   } catch (err) {
     console.error("patients: save failed", err instanceof Error ? err.message : "unknown");
     return Response.json({ error: "Could not save the patient. Please try again." }, { status: 500 });

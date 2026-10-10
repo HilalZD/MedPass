@@ -5,6 +5,7 @@
 // the clinician confirms them (or types over them) after checking the patient's ID.
 
 import type { ExtractedDraft } from "@/lib/extract";
+import PhotoField, { type PhotoValue } from "./PhotoField";
 import { NameList } from "./ReviewStep";
 import { btn, input } from "./ui";
 
@@ -17,6 +18,8 @@ export default function DetailsStep({
   setDraft,
   confirmed,
   setConfirmed,
+  photo,
+  setPhoto,
   onBack,
   onNext,
 }: {
@@ -24,6 +27,8 @@ export default function DetailsStep({
   setDraft: (d: ExtractedDraft) => void;
   confirmed: Confirmed;
   setConfirmed: (c: Confirmed) => void;
+  photo: PhotoValue;
+  setPhoto: (p: PhotoValue) => void;
   onBack: () => void;
   onNext: () => void;
 }) {
@@ -31,7 +36,7 @@ export default function DetailsStep({
   const setPatient = (patch: Partial<ExtractedDraft["patient"]>) => setDraft({ ...draft, patient: { ...p, ...patch } });
   const bloodTypeOk = !p.bloodType || (BLOOD_TYPES as readonly string[]).includes(p.bloodType);
   // An empty date of birth needs no confirmation (it is optional).
-  const ready = p.name.trim() !== "" && confirmed.name && (!p.dateOfBirth || confirmed.dob) && bloodTypeOk;
+  const ready = p.name.trim() !== "" && confirmed.name && (!p.dateOfBirth || confirmed.dob) && bloodTypeOk && (!photo.photo || photo.consent);
 
   return (
     <section className="flex flex-col gap-5">
@@ -108,6 +113,8 @@ export default function DetailsStep({
           {!bloodTypeOk && <span className="text-base text-yellow-900">The paper says &quot;{p.bloodType}&quot;. Pick the right one.</span>}
         </label>
       </div>
+
+      <PhotoField value={photo} onChange={setPhoto} />
 
       <div className="flex flex-col gap-3 rounded-xl border-2 border-red-300 bg-red-50 p-3">
         <p className="text-lg font-semibold">Printed on the card, readable without a PIN:</p>

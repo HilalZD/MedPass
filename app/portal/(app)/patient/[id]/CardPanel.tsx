@@ -19,6 +19,20 @@ import { PinGate, type Payload } from "./PatientView";
 
 type Mode = "update" | "lost";
 
+// The card photo as a data: URL for /print (fetched through the two-key route).
+async function photoDataUrl(id: string, hasPhoto: boolean): Promise<string | undefined> {
+  if (!hasPhoto) return undefined;
+  const res = await fetch(`/api/portal/patients/${encodeURIComponent(id)}/photo`);
+  if (!res.ok) return undefined;
+  const blob = await res.blob();
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : undefined);
+    reader.onerror = () => resolve(undefined);
+    reader.readAsDataURL(blob);
+  });
+}
+
 export default function CardPanel({
   id,
   data,
@@ -92,7 +106,7 @@ export default function CardPanel({
       sessionStorage.setItem(PRINT_KEY, payload);
       // Printed on the card but not inside the QR: Arabic name and sex. Never the PIN.
       const printed = body.record as MedPassRecord;
-      setPrintExtra({ nameAr: printed.patient.nameAr, sex: printed.patient.sex });
+      setPrintExtra({ nameAr: printed.patient.nameAr, sex: printed.patient.sex, photo: await photoDataUrl(id, body.hasPhoto) });
       router.push("/print");
     } catch (e) {
       setError(e instanceof Error ? e.message : "No internet connection.");

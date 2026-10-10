@@ -12,7 +12,17 @@ import type { MedPassRecord } from "@/lib/types";
 import CardMeter, { cardIsFull } from "./CardMeter";
 import { ErrorBox, btn } from "./ui";
 
-export default function DoneStep({ record, pin, onAnother }: { record: MedPassRecord; pin: string; onAnother: () => void }) {
+export default function DoneStep({
+  record,
+  pin,
+  photo,
+  onAnother,
+}: {
+  record: MedPassRecord;
+  pin: string;
+  photo: string | null; // consented card photo (data URL), printed only
+  onAnother: () => void;
+}) {
   const router = useRouter();
   const [okDropped, setOkDropped] = useState(false);
   const [error, setError] = useState("");
@@ -36,7 +46,7 @@ export default function DoneStep({ record, pin, onAnother }: { record: MedPassRe
       const payload = await encode(fit.record, pin); // takes about a second: strong PIN protection
       sessionStorage.setItem(PRINT_KEY, payload);
       // Printed on the card but not inside the QR: Arabic name and sex. Never the PIN.
-      setPrintExtra({ nameAr: record.patient.nameAr, sex: record.patient.sex });
+      setPrintExtra({ nameAr: record.patient.nameAr, sex: record.patient.sex, photo: photo ?? undefined });
       router.push("/print");
     } catch {
       setError("Could not prepare the card. Please try again.");

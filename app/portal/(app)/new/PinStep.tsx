@@ -9,16 +9,19 @@ import { fitRecord } from "@/lib/card";
 import { draftToRecord, type ExtractedDraft } from "@/lib/extract";
 import type { MedPassRecord } from "@/lib/types";
 import CardMeter from "./CardMeter";
+import type { PhotoValue } from "./PhotoField";
 import { ErrorBox, btn, input } from "./ui";
 
 const sixDigits = (s: string) => /^\d{6}$/.test(s);
 
 export default function PinStep({
   draft,
+  photo,
   onBack,
   onSaved,
 }: {
   draft: ExtractedDraft;
+  photo: PhotoValue;
   onBack: () => void;
   onSaved: (record: MedPassRecord, pin: string) => void;
 }) {
@@ -47,7 +50,12 @@ export default function PinStep({
       const res = await fetch("/api/portal/patients", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ draft: { ...draft, updated: new Date().toISOString().slice(0, 10) }, pin }),
+        body: JSON.stringify({
+          draft: { ...draft, updated: new Date().toISOString().slice(0, 10) },
+          pin,
+          // Only with consent. Saved in private storage, never in the QR.
+          ...(photo.photo && photo.consent ? { photo: { photo: photo.photo, consent: true } } : {}),
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? `Server error (${res.status})`);

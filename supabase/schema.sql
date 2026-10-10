@@ -53,6 +53,19 @@ create table if not exists patients (
 -- Separate statement so re-running this file adds it to an existing table.
 alter table patients add column if not exists verified_fields text[] not null default '{}';
 
+-- Optional patient photo (printed on the card only, with consent). The image
+-- itself lives in the PRIVATE storage bucket "patient-photos" as {MedPass ID}.jpg;
+-- this column says it exists. Never in the QR, never sent to the AI.
+alter table patients add column if not exists photo_path text;
+
+-- The private bucket. public = false and NO storage policies: browsers can't
+-- read or list it at all; only our server (service role key) can, after it has
+-- checked the clinician login AND the patient's PIN unlock.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('patient-photos', 'patient-photos', false, 102400, array['image/jpeg'])
+on conflict (id) do update
+  set public = false, file_size_limit = 102400, allowed_mime_types = array['image/jpeg'];
+
 -- Who did what to which record, and when. The patient can read their own log.
 -- clinician_id / facility_id are empty when the patient opens their own record (/me).
 create table if not exists access_log (
