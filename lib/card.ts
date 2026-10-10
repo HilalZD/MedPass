@@ -7,8 +7,8 @@
  *
  *   MP1:        version prefix, so future formats can be told apart.
  *   emLen       length of the emergency bytes, 2 bytes, big-endian.
- *   emergency   deflateRaw(JSON {id, cardVersion, name, dateOfBirth, bloodType,
- *               allergies, critical}). NOT encrypted: a paramedic must read it
+ *   emergency   deflateRaw(JSON [id, cardVersion, name, dateOfBirth, bloodType,
+ *               allergies, critical]). NOT encrypted: a paramedic must read it
  *               without the PIN, and the scanner needs id + cardVersion for the
  *               "Open in hospital portal" button and the "card was replaced" check.
  *   salt, iv    random per card; needed to rebuild the key. Not secret.
@@ -102,6 +102,23 @@ const emergencySchema = z.object({
   allergies: z.array(z.string()),
   critical: z.array(z.string()),
 });
+
+/**
+ * On the card the public part is a fixed-order array, not an object: key names
+ * like "cardVersion" cost QR space (about 75 characters for this part).
+ * Order: [id, cardVersion, name, dateOfBirth, bloodType, allergies, critical];
+ * a missing dateOfBirth / bloodType is null. readEmergency() turns it back into
+ * the named Emergency object.
+ */
+const publicPartSchema = z.tuple([
+  z.string(),
+  z.number().int(),
+  z.string(),
+  z.string().nullable(),
+  z.string().nullable(),
+  z.array(z.string()),
+  z.array(z.string()),
+]);
 
 const recordSchema = z.object({
   v: z.literal(2),
@@ -346,7 +363,10 @@ function splitPayload(payload: string): Parts {
 
 function parseEmergency(bytes: Uint8Array): Emergency {
   try {
-    return emergencySchema.parse(unsqueeze(bytes));
+    const [id, cardVersion, name, dateOfBirth, bloodType, allergies, critical] = publicPartSchema.parse(
+      unsqueeze(bytes),
+    );
+    return emergencySchema.parse(compact({ id, cardVersion, name, dateOfBirth, bloodType, allergies, critical }));
   } catch {
     throw new Error(NOT_A_CARD);
   }
@@ -358,17 +378,16 @@ function parseEmergency(bytes: Uint8Array): Emergency {
 
 /** The two byte strings that go on a card: plaintext emergency + (unencrypted) secret part. */
 function serialize(rec: MedPassRecord): { emergency: Uint8Array; plaintext: Uint8Array } {
-  const emergency = squeeze(
-    compact({
-      id: rec.id,
-      cardVersion: rec.cardVersion,
-      name: rec.patient.name,
-      dateOfBirth: rec.patient.dateOfBirth,
-      bloodType: rec.patient.bloodType,
-      allergies: rec.emergency.allergies,
-      critical: rec.emergency.critical,
-    }) satisfies Emergency,
-  );
+  const publicPart: z.infer<typeof publicPartSchema> = [
+    rec.id,
+    rec.cardVersion,
+    rec.patient.name,
+    orNull(rec.patient.dateOfBirth),
+    orNull(rec.patient.bloodType),
+    rec.emergency.allergies,
+    rec.emergency.critical,
+  ];
+  const emergency = squeeze(publicPart);
   if (emergency.length > 0xffff) throw new Error(CARD_FULL);
   return { emergency, plaintext: squeeze(pack(rec)) };
 }

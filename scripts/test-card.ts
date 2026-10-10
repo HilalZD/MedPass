@@ -101,8 +101,11 @@ async function main() {
   const bytes = fromBase45(payload.slice("MP1:".length));
   const emLen = (bytes[0] << 8) | bytes[1];
   const realEmergency = readEmergency(payload);
-  const forge = (changes: object) => {
-    const forged = deflateRaw(JSON.stringify({ ...realEmergency, ...changes }));
+  const forge = (changes: Partial<typeof realEmergency>) => {
+    const e = { ...realEmergency, ...changes };
+    // Same fixed-order array the card uses for its public part.
+    const publicPart = [e.id, e.cardVersion, e.name, e.dateOfBirth ?? null, e.bloodType ?? null, e.allergies, e.critical];
+    const forged = deflateRaw(JSON.stringify(publicPart));
     return "MP1:" + toBase45(new Uint8Array([forged.length >> 8, forged.length & 0xff, ...forged, ...bytes.slice(2 + emLen)]));
   };
   // 3a. Drop the penicillin allergy.
@@ -133,6 +136,22 @@ async function main() {
   }
   check("4. readEmergency returns id, cardVersion, name, dateOfBirth, bloodType, allergies, critical", emEqual, JSON.stringify(em));
   check("4b. sex is NOT in the public part (stays encrypted)", !("sex" in em));
+
+  // 4c. Optional public fields missing: they stay absent (not null) after the round trip.
+  const minimal: MedPassRecord = { ...fixture, patient: { name: fixture.patient.name } };
+  const minimalPayload = await encode(minimal, PIN);
+  const minimalEm = readEmergency(minimalPayload);
+  let minimalEqual = true;
+  try {
+    deepStrictEqual(await decode(minimalPayload, PIN), minimal);
+  } catch {
+    minimalEqual = false;
+  }
+  check(
+    "4c. no dateOfBirth/bloodType/sex: round trip ok, fields absent in readEmergency",
+    minimalEqual && !("dateOfBirth" in minimalEm) && !("bloodType" in minimalEm),
+    JSON.stringify(minimalEm),
+  );
 
   // 5. Size of the sample card, and QR alphanumeric mode.
   checkAlphanumeric("5", payload);
