@@ -8,7 +8,7 @@ import { getClinician } from "@/lib/db/auth";
 
 export default function PortalLayout({ children }: LayoutProps<"/portal">) {
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="flex flex-1 flex-col bg-white text-gray-900" style={{ colorScheme: "light" }}>
       <header className="flex items-center justify-between gap-3 border-b-2 border-gray-200 bg-white px-4 py-3">
         <a href="/portal" className="text-xl font-bold">
           MedPass

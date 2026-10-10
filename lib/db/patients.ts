@@ -219,6 +219,27 @@ export async function portalPayload(row: PatientRow, unlockedUntil: number, clin
   };
 }
 
+// What the patient sees on /me: read-only record, card version and access log.
+// NEVER includes pin_hash, emails or internal database IDs (log rows carry only
+// time, action, clinician name and facility name; MoPH row IDs are removed).
+export async function patientPayload(row: PatientRow, until: number) {
+  return {
+    record: { ...row.record, meds: row.record.meds.map(({ drugId: _d, ...m }) => (void _d, m)) },
+    cardVersion: row.card_version,
+    unlockedUntil: until,
+    log: await getAccessLog(row.id, 100),
+  };
+}
+
+// A real bcrypt hash of a value no PIN can match. Comparing against it when
+// the MedPass ID doesn't exist makes "wrong ID" take as long as "wrong PIN",
+// so response time doesn't reveal which IDs exist.
+let dummyHash: string | undefined;
+export async function compareDummy(pin: string): Promise<void> {
+  dummyHash ??= await bcrypt.hash("not-a-real-pin", 10);
+  await bcrypt.compare(pin, dummyHash);
+}
+
 // ---------------------------------------------------------------------------
 // Validation of an edited record sent by the portal (with size limits).
 // ---------------------------------------------------------------------------

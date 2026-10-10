@@ -20,27 +20,14 @@ import { decode, encode, fitRecord, readEmergency } from "../lib/card";
 import type { MedPassRecord } from "../lib/types";
 
 const PIN = "246810";
-const NAME_AR = "هلال زيدان";
-const SEX = "M" as const;
 const PHOTO = `data:image/jpeg;base64,${readFileSync("fixtures/demo-photo.jpg").toString("base64")}`;
 
-// Demo record. The medical details are FICTIONAL demo values (from the sample
-// record). EDIT ME: add dateOfBirth ("YYYY-MM-DD") and bloodType if you want them printed.
-const DEMO: MedPassRecord = {
-  v: 2,
-  id: "MP-HZ26-DM8X",
-  cardVersion: 1,
-  patient: { name: "Hilal Zeidan", sex: SEX },
-  emergency: { allergies: ["Penicillin"], critical: ["Insulin-dependent diabetes"] },
-  conditions: [{ name: "Type 2 diabetes", verified: "clinician" }],
-  meds: [
-    { name: "Glucophage", ingredient: "Metformin", strength: "850 mg", frequency: "twice daily", status: "green", verified: "clinician" },
-    { name: "Lantus", ingredient: "Insulin glargine", strength: "18 units", frequency: "at bedtime", status: "green", verified: "clinician" },
-  ],
-  referrals: [],
-  visits: [{ date: "2026-10-10", place: "AUB Medical Center", note: "Demo card issued" }],
-  updated: "2026-10-10",
-};
+// Demo record, shared with supabase/seed-demo-patient.ts so the printed card
+// and the online record match. The medical details are FICTIONAL demo values.
+// EDIT fixtures/demo-record.json to add dateOfBirth ("YYYY-MM-DD") and bloodType.
+const DEMO = JSON.parse(readFileSync("fixtures/demo-record.json", "utf8")) as MedPassRecord;
+const NAME_AR = DEMO.patient.nameAr;
+const SEX = DEMO.patient.sex;
 
 let failures = 0;
 function check(label: string, ok: boolean, detail = "") {

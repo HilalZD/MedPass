@@ -70,6 +70,13 @@ export default function DoneStep({ record, pin, onAnother }: { record: MedPassRe
       <button className={`${btn.primary} w-full`} disabled={blocked || busy} onClick={print}>
         {busy ? "Preparing the card…" : "Print ID card"}
       </button>
+      <p className="rounded-xl bg-gray-100 p-4 text-lg">
+        The patient can check who opened their record at{" "}
+        <a href="/me" target="_blank" rel="noopener" className="font-mono font-semibold text-blue-800 underline">
+          /me
+        </a>{" "}
+        with their MedPass ID and PIN.
+      </p>
       <button className={`${btn.secondary} w-full`} onClick={onAnother} disabled={busy}>
         New patient
       </button>

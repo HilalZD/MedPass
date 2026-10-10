@@ -39,6 +39,7 @@ export default function LoginPage() {
   }
 
   return (
+    <div className="flex flex-1 flex-col bg-white text-gray-900" style={{ colorScheme: "light" }}>
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 p-6">
       <div className="text-center">
         <h1 className="text-3xl font-bold">MedPass Portal</h1>
@@ -94,5 +95,6 @@ export default function LoginPage() {
         </button>
       </form>
     </main>
+    </div>
   );
 }
