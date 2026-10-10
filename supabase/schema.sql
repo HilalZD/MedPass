@@ -25,8 +25,14 @@ create table if not exists clinicians (
   user_id     uuid primary key references auth.users (id) on delete cascade,
   facility_id uuid not null references facilities (id),
   full_name   text not null,
-  role        text not null default 'clinician' check (role in ('clinician', 'admin'))
+  role        text not null
 );
+
+-- Allowed roles. Done as a separate drop + add (not inside create table) so that
+-- re-running this file also updates the rule on a database that already exists.
+alter table clinicians drop constraint if exists clinicians_role_check;
+alter table clinicians add constraint clinicians_role_check
+  check (role in ('doctor', 'nurse', 'pharmacist', 'admin'));
 
 -- One row per patient. `record` is the full MedPassRecord (lib/types.ts) as JSON.
 -- The PIN itself is never stored, only its bcrypt hash.
@@ -93,21 +99,21 @@ on conflict (id) do nothing;
 --
 -- 1. Supabase dashboard → Authentication → Users → "Add user" → "Create new user".
 --    Enter email + password and tick "Auto Confirm User". Do this for both users.
--- 2. Replace the emails and names below, then run just this block.
+-- 2. Uncomment this block (it is filled in for the 2 demo users) and run just it.
 -- ---------------------------------------------------------------------------
 
 -- insert into clinicians (user_id, facility_id, full_name, role)
--- select id, '11111111-1111-1111-1111-111111111111', 'Dr. Demo Tyre', 'clinician'
--- from auth.users where email = 'tyre@example.com'
+-- select id, '11111111-1111-1111-1111-111111111111', 'Nurse Rana Khalil', 'nurse'
+-- from auth.users where email = 'nurse@tyre-phc.demo'
 -- on conflict (user_id) do update
 --   set facility_id = excluded.facility_id, full_name = excluded.full_name, role = excluded.role;
 --
 -- insert into clinicians (user_id, facility_id, full_name, role)
--- select id, '22222222-2222-2222-2222-222222222222', 'Dr. Demo Beirut', 'clinician'
--- from auth.users where email = 'beirut@example.com'
+-- select id, '22222222-2222-2222-2222-222222222222', 'Dr. Karim Nasr', 'doctor'
+-- from auth.users where email = 'doctor@beirut-hospital.demo'
 -- on conflict (user_id) do update
 --   set facility_id = excluded.facility_id, full_name = excluded.full_name, role = excluded.role;
 --
 -- Check it worked (should show 2 rows with names and facilities):
--- select c.full_name, u.email, f.name
+-- select c.full_name, c.role, u.email, f.name as facility
 -- from clinicians c join auth.users u on u.id = c.user_id join facilities f on f.id = c.facility_id;

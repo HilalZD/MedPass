@@ -13,7 +13,7 @@ export type ClinicianRow = {
   user_id: string;
   facility_id: string;
   full_name: string;
-  role: "clinician" | "admin";
+  role: "doctor" | "nurse" | "pharmacist" | "admin";
 };
 
 export type PatientRow = {
