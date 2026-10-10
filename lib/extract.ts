@@ -235,8 +235,9 @@ export const reviewedDraftSchema = z.object({
   patient: z.object({
     name: text(120).min(1),
     nameAr: text(120).optional(),
-    dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-    sex: z.enum(["F", "M"]).optional(),
+    // Required when saving: a full date or the year only.
+    dateOfBirth: z.string().regex(/^\d{4}(-\d{2}-\d{2})?$/),
+    sex: z.enum(["F", "M"]),
     bloodType: z.enum(["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]).optional(),
     ageWritten: text(20).optional(),
   }),

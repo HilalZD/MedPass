@@ -9,7 +9,7 @@ import type { ExtractedDraft } from "@/lib/extract";
 import type { MedPassRecord } from "@/lib/types";
 import DetailsStep, { type Confirmed } from "./DetailsStep";
 import DoneStep from "./DoneStep";
-import type { PhotoValue } from "./PhotoField";
+import { EMPTY_PHOTO, type PhotoValue } from "./PhotoField";
 import PhotoStep from "./PhotoStep";
 import PinStep from "./PinStep";
 import ReviewStep from "./ReviewStep";
@@ -22,9 +22,9 @@ export default function NewPatientPage() {
   const [photos, setPhotos] = useState<string[]>([]);
   const [draft, setDraft] = useState<ExtractedDraft | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
-  const [confirmed, setConfirmed] = useState<Confirmed>({ name: false, dob: false });
+  const [confirmed, setConfirmed] = useState<Confirmed>({ name: false, dob: false, blood: false });
   const [saved, setSaved] = useState<{ record: MedPassRecord; pin: string } | null>(null);
-  const [photo, setPhoto] = useState<PhotoValue>({ photo: null, consent: false }); // optional card photo
+  const [photo, setPhoto] = useState<PhotoValue>(EMPTY_PHOTO); // card photo: browser memory only, never uploaded
 
   const go = (s: Step) => {
     setStep(s);
@@ -35,9 +35,9 @@ export default function NewPatientPage() {
     setPhotos([]);
     setDraft(null);
     setWarnings([]);
-    setConfirmed({ name: false, dob: false });
+    setConfirmed({ name: false, dob: false, blood: false });
     setSaved(null);
-    setPhoto({ photo: null, consent: false });
+    setPhoto(EMPTY_PHOTO);
     go("photos");
   }
 
@@ -56,7 +56,7 @@ export default function NewPatientPage() {
           onRead={(d, w) => {
             setDraft(d);
             setWarnings(w);
-            setConfirmed({ name: false, dob: false });
+            setConfirmed({ name: false, dob: false, blood: false });
             go("review");
           }}
         />
@@ -86,7 +86,6 @@ export default function NewPatientPage() {
       {step === "pin" && draft && (
         <PinStep
           draft={draft}
-          photo={photo}
           onBack={() => go("details")}
           onSaved={(record, pin) => {
             setSaved({ record, pin });

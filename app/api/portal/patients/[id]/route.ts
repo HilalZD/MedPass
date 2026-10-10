@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { requireClinician } from "@/lib/db/auth";
-import { editedRecordSchema, getPatient, lastReissueReason, portalPayload, saveRecord } from "@/lib/db/patients";
+import { changedPatientFields, editedRecordSchema, getPatient, lastReissueReason, portalPayload, saveRecord } from "@/lib/db/patients";
 import { requireUnlock, unlockedUntil } from "@/lib/db/unlock";
 
 type Ctx = RouteContext<"/api/portal/patients/[id]">;
@@ -61,6 +61,11 @@ export async function PATCH(request: Request, ctx: Ctx) {
     cardVersion: row.card_version,
     updated: new Date().toISOString().slice(0, 10),
   };
+
+  // Same identity rules as creating a patient, whenever identity details change.
+  if (changedPatientFields(row.record, record).length > 0 && (!record.patient.dateOfBirth || !record.patient.sex)) {
+    return Response.json({ error: "Date of birth (or year) and sex are required." }, { status: 400 });
+  }
 
   try {
     const saved = await saveRecord(row, record, body.baseUpdatedAt, clinician);

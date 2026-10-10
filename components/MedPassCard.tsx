@@ -242,7 +242,15 @@ export function CardFront({ em, nameAr, sex, photo }: { em: Emergency; nameAr?: 
       {/* blood type */}
       <div style={abs({ right: "3.5mm", top: "36.2mm", display: "flex", alignItems: "center", gap: "1.6mm" })}>
         <div dir="ltr" style={{ fontSize: "5mm", fontWeight: 700, letterSpacing: "0.1mm" }}>
-          {em.bloodType || "—"}
+          {em.bloodType || (
+            // No blood type on record = explicitly "Unknown".
+            <span style={{ display: "block", fontSize: "2.1mm", lineHeight: 1.2, textAlign: "right" }}>
+              <span lang="ar" dir="rtl" style={{ display: "block" }}>
+                غير معروف
+              </span>
+              Unknown
+            </span>
+          )}
         </div>
         <div style={{ textAlign: "left" }}>
           <div dir="rtl" lang="ar" style={{ fontSize: "1.9mm", fontWeight: 600, color: C.green }}>

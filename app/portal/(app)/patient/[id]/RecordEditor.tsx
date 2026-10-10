@@ -9,8 +9,7 @@ import DrugInfo from "@/components/DrugInfo";
 import { NOT_IN_MOPH_LIST } from "@/lib/extract";
 import { createMatcher, type Matcher } from "@/lib/match";
 import type { Med, MedPassRecord, Verified } from "@/lib/types";
-import { BLOOD_TYPES } from "../../new/DetailsStep";
-import PhotoField, { type PhotoValue } from "../../new/PhotoField";
+import { BloodSelect, DobInput, FieldError, SexSelect, identityIssues } from "../../new/identity";
 import { AddLine, MedForm } from "../../new/ReviewStep";
 import { ErrorBox, btn, input, statusLabel, statusStyle, useDrugs } from "../../new/ui";
 import CardPanel from "./CardPanel";
@@ -70,7 +69,10 @@ export default function RecordEditor({
     () => ({ ...w, meds: w.meds.map(({ note: _n, ...m }) => (void _n, m)) }),
     [w],
   );
-  const canSave = unresolved === 0 && w.patient.name.trim() !== "";
+  // Changed identity details must follow the same rules as when creating a patient.
+  // (Unchanged legacy records can still get clinical edits.)
+  const identityOk = changedFields.length === 0 || identityIssues(w.patient, true).length === 0;
+  const canSave = unresolved === 0 && w.patient.name.trim() !== "" && identityOk;
 
   // Returns true only if the record was saved.
   async function save(): Promise<boolean> {
@@ -113,8 +115,6 @@ export default function RecordEditor({
         changed={changedFields}
         onChange={(patient) => setW({ ...w, patient })}
       />
-
-      <PhotoPanel id={id} data={data} setData={setData} onLock={onLock} />
 
       <section className="flex flex-col gap-3 rounded-xl border-2 border-red-300 bg-red-50 p-3">
         <h2 className="text-xl font-semibold">Emergency info (printed on the card)</h2>
@@ -228,6 +228,11 @@ export default function RecordEditor({
         <div className="sticky bottom-0 flex flex-col gap-2 border-t-2 border-gray-200 bg-white py-3">
           {error && <ErrorBox>{error}</ErrorBox>}
           {savedMsg && <p className="text-center text-lg font-semibold text-brand-dark">{savedMsg}</p>}
+          {!identityOk && (
+            <p className="text-center text-lg font-semibold text-red-800">
+              Fix the patient details above first. <span lang="ar">صحّح بيانات المريض أولاً.</span>
+            </p>
+          )}
           {unresolved > 0 && (
             <p className="text-center text-lg font-semibold text-yellow-800">
               {unresolved} medicine{unresolved === 1 ? "" : "s"} still to check
@@ -330,7 +335,7 @@ const FIELDS: { key: PatientField; label: string }[] = [
 ];
 
 function show(key: PatientField, value: string | undefined): string {
-  if (!value) return "(empty)";
+  if (!value) return key === "bloodType" ? "Unknown · غير معروف" : "(empty)";
   if (key === "sex") return value === "F" ? "Female" : "Male";
   return value;
 }
@@ -349,6 +354,9 @@ function PatientDetails({
   onChange: (p: Patient) => void;
 }) {
   const [editing, setEditing] = useState(false);
+  // In edit mode an empty blood type means "Unknown" was chosen, so it always counts as chosen.
+  const issues = editing ? identityIssues(patient, true) : [];
+  const issue = (f: string) => issues.find((i) => i.field === f);
   const badge = (key: PatientField) =>
     changed.some((c) => c.key === key) ? (
       <span className="rounded-full bg-brand-100 px-2 py-0.5 text-sm font-semibold text-brand-dark">Changed, not saved</span>
@@ -381,111 +389,28 @@ function PatientDetails({
             />
           )}
           {editing && key === "name" && (
-            <input className={input} dir="auto" value={patient.name} onChange={(e) => onChange({ ...patient, name: e.target.value })} />
+            <>
+              <input className={input} dir="auto" value={patient.name} onChange={(e) => onChange({ ...patient, name: e.target.value })} />
+              <FieldError issue={issue("name")} />
+            </>
           )}
           {editing && key === "dateOfBirth" && (
-            <input
-              className={input}
-              type="date"
-              max={today()}
-              value={patient.dateOfBirth ?? ""}
-              onChange={(e) => onChange({ ...patient, dateOfBirth: e.target.value || undefined })}
-            />
+            <>
+              <DobInput value={patient.dateOfBirth} onChange={(dateOfBirth) => onChange({ ...patient, dateOfBirth })} />
+              <FieldError issue={issue("dob")} />
+            </>
           )}
           {editing && key === "sex" && (
-            <select
-              className={input}
-              value={patient.sex ?? ""}
-              onChange={(e) => onChange({ ...patient, sex: (e.target.value || undefined) as Patient["sex"] })}
-            >
-              <option value="">Not given</option>
-              <option value="F">Female</option>
-              <option value="M">Male</option>
-            </select>
+            <>
+              <SexSelect value={patient.sex} onChange={(sex) => onChange({ ...patient, sex })} />
+              <FieldError issue={issue("sex")} />
+            </>
           )}
           {editing && key === "bloodType" && (
-            <select className={input} value={patient.bloodType ?? ""} onChange={(e) => onChange({ ...patient, bloodType: e.target.value || undefined })}>
-              <option value="">Unknown</option>
-              {BLOOD_TYPES.map((b) => (
-                <option key={b}>{b}</option>
-              ))}
-            </select>
+            <BloodSelect value={patient.bloodType} chosen onChange={(bloodType) => onChange({ ...patient, bloodType })} />
           )}
         </div>
       ))}
-      {editing && !patient.name.trim() && <ErrorBox>The name can&apos;t be empty.</ErrorBox>}
-    </section>
-  );
-}
-
-// The card photo: shown through the two-key route (clinician login + PIN unlock),
-// changed or removed right away (separately from "Save changes"), one "edit" entry each.
-function PhotoPanel({ id, data, setData, onLock }: { id: string; data: Payload; setData: (d: Payload) => void; onLock: () => void }) {
-  const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState<PhotoValue>({ photo: null, consent: false });
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const url = `/api/portal/patients/${encodeURIComponent(id)}`;
-
-  async function send(method: "PUT" | "DELETE") {
-    setBusy(true);
-    setError("");
-    try {
-      const res = await fetch(`${url}/photo`, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: method === "PUT" ? JSON.stringify({ photo: value.photo, consent: value.consent }) : undefined,
-      });
-      const body = await res.json();
-      if (res.status === 403 && body.needPin) return onLock();
-      if (!res.ok) throw new Error(body.error ?? "Could not update the photo.");
-      const fresh = await fetch(url);
-      if (fresh.ok) setData(await fresh.json());
-      setEditing(false);
-      setValue({ photo: null, consent: false });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No internet connection.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <section className="flex flex-col gap-3 rounded-xl border-2 border-gray-200 p-3">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="text-xl font-semibold">Card photo</h2>
-        {!editing && (
-          <button className={btn.small} onClick={() => setEditing(true)}>
-            {data.hasPhoto ? "Change photo" : "Add photo"}
-          </button>
-        )}
-      </div>
-      {!editing &&
-        (data.hasPhoto ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={`${url}/photo?v=${encodeURIComponent(data.updatedAt)}`} alt="Patient photo" className="h-40 w-30 rounded-xl border-2 border-brand object-cover" />
-        ) : (
-          <p className="text-lg text-muted">No photo. The card shows a neutral silhouette.</p>
-        ))}
-      {editing && (
-        <>
-          <PhotoField value={value} onChange={setValue} />
-          <div className="grid grid-cols-2 gap-2">
-            <button className={btn.secondary} disabled={busy} onClick={() => setEditing(false)}>
-              Cancel
-            </button>
-            <button className={btn.primary} disabled={busy || !value.photo || !value.consent} onClick={() => send("PUT")}>
-              {busy ? "Saving…" : "Save photo"}
-            </button>
-          </div>
-          {data.hasPhoto && (
-            <button className={btn.danger} disabled={busy} onClick={() => send("DELETE")}>
-              Remove the current photo
-            </button>
-          )}
-        </>
-      )}
-      {error && <ErrorBox>{error}</ErrorBox>}
     </section>
   );
 }

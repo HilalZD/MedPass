@@ -27,7 +27,6 @@ export type PatientRow = {
   created_at: string;
   updated_at: string;
   verified_fields: PatientField[]; // patient details a clinician has checked/changed
-  photo_path: string | null; // file in the private "patient-photos" bucket, if there is a photo
 };
 
 export type PatientField = "name" | "nameAr" | "dateOfBirth" | "sex" | "bloodType";

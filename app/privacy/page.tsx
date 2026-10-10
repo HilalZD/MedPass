@@ -12,12 +12,15 @@ const answers: QA[] = [
     qAr: "ما المعلومات التي نجمعها؟",
     a: (
       <>
-        Name, date of birth, sex, blood type, allergies, conditions, medicines, referrals, visits, and an optional photo
-        with the patient&apos;s consent. <strong>No national ID number.</strong> Photos of old prescriptions are read by
-        the AI and <strong>never stored</strong>.
+        Name, date of birth, sex, blood type, allergies, conditions, medicines, referrals and visits.{" "}
+        <strong>No national ID number.</strong> Photos of old prescriptions are read by the AI and{" "}
+        <strong>never stored</strong>.
+        <br />
+        <strong>Photo:</strong> optional, with consent. It is printed on your card only. We never store it on our
+        servers, never put it in the QR, and never send it to the AI.
       </>
     ),
-    aAr: "الاسم، تاريخ الولادة، الجنس، فئة الدم، الحساسية، الأمراض، الأدوية، الإحالات، الزيارات، وصورة اختيارية بموافقة المريض. لا نجمع رقم الهوية الوطنية. صور الوصفات القديمة يقرأها الذكاء الاصطناعي ولا تُحفظ أبداً.",
+    aAr: "الاسم، تاريخ الولادة، الجنس، فئة الدم، الحساسية، الأمراض، الأدوية، الإحالات والزيارات. لا نجمع رقم الهوية الوطنية. صور الوصفات القديمة يقرأها الذكاء الاصطناعي ولا تُحفظ أبداً. الصورة الشخصية: اختيارية وبموافقتك. تُطبع على بطاقتك فقط. لا نحفظها أبداً على خوادمنا، ولا نضعها في رمز QR، ولا نرسلها إلى الذكاء الاصطناعي.",
   },
   {
     q: "Who can see it?",

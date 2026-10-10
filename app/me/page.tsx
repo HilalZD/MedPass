@@ -157,7 +157,7 @@ function Record({ data, onLock }: { data: Payload; onLock: () => void }) {
         )}
         <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-lg">
           <Item label="Date of birth" value={p.dateOfBirth} />
-          <Item label="Blood type" value={p.bloodType} />
+          <Item label="Blood type" value={p.bloodType || "Unknown · غير معروف"} />
           <Item label="MedPass ID" value={r.id} mono />
           <Item label="Current card" value={`Card ${data.cardVersion}`} />
         </dl>

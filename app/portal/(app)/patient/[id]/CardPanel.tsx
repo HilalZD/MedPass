@@ -7,6 +7,8 @@
 // → encrypt with the PIN from memory → sessionStorage "medpass:print" → /print.
 // Only the encrypted payload goes to /print: never the record or the PIN.
 // The MedPass ID never changes; only the card version goes up.
+// The card photo is never stored, so it is asked again before every print
+// (take / upload with consent, or "No photo" with a reason).
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -14,24 +16,11 @@ import { PRINT_KEY, setPrintExtra } from "@/components/MedPassCard";
 import { encode, fitRecord } from "@/lib/card";
 import type { MedPassRecord } from "@/lib/types";
 import CardMeter, { cardIsFull } from "../../new/CardMeter";
+import PhotoField, { EMPTY_PHOTO, photoDecided, type PhotoValue } from "../../new/PhotoField";
 import { ErrorBox, btn } from "../../new/ui";
 import { PinGate, type Payload } from "./PatientView";
 
 type Mode = "update" | "lost";
-
-// The card photo as a data: URL for /print (fetched through the two-key route).
-async function photoDataUrl(id: string, hasPhoto: boolean): Promise<string | undefined> {
-  if (!hasPhoto) return undefined;
-  const res = await fetch(`/api/portal/patients/${encodeURIComponent(id)}/photo`);
-  if (!res.ok) return undefined;
-  const blob = await res.blob();
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : undefined);
-    reader.onerror = () => resolve(undefined);
-    reader.readAsDataURL(blob);
-  });
-}
 
 export default function CardPanel({
   id,
@@ -60,6 +49,7 @@ export default function CardPanel({
   const [mode, setMode] = useState<Mode | null>(null);
   const [okDropped, setOkDropped] = useState(false);
   const [okLost, setOkLost] = useState(false);
+  const [photo, setPhoto] = useState<PhotoValue>(EMPTY_PHOTO); // browser memory only
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -76,6 +66,7 @@ export default function CardPanel({
     setMode(null);
     setOkDropped(false);
     setOkLost(false);
+    setPhoto(EMPTY_PHOTO);
     setError("");
   };
 
@@ -106,7 +97,7 @@ export default function CardPanel({
       sessionStorage.setItem(PRINT_KEY, payload);
       // Printed on the card but not inside the QR: Arabic name and sex. Never the PIN.
       const printed = body.record as MedPassRecord;
-      setPrintExtra({ nameAr: printed.patient.nameAr, sex: printed.patient.sex, photo: await photoDataUrl(id, body.hasPhoto) });
+      setPrintExtra({ nameAr: printed.patient.nameAr, sex: printed.patient.sex, photo: photo.photo && photo.consent ? photo.photo : undefined });
       router.push("/print");
     } catch (e) {
       setError(e instanceof Error ? e.message : "No internet connection.");
@@ -135,6 +126,7 @@ export default function CardPanel({
     (fit.droppedVisits.length > 0 && !okDropped) ||
     (mode === "lost" && !okLost) ||
     !pin ||
+    !photoDecided(photo) ||
     (dirty && !canSave);
 
   return (
@@ -153,6 +145,8 @@ export default function CardPanel({
           OK, print without these visits
         </label>
       )}
+      <PhotoField value={photo} onChange={setPhoto} />
+
       {mode === "lost" && (
         <label className="flex items-center gap-3 text-lg">
           <input type="checkbox" className="h-6 w-6" checked={okLost} onChange={(e) => setOkLost(e.target.checked)} />

@@ -21,7 +21,6 @@ export type Payload = {
   lastReissueReason: ReissueReason | null;
   updatedAt: string;
   verifiedFields: PatientField[]; // patient details a clinician has checked/changed
-  hasPhoto: boolean; // the photo itself only via /api/portal/patients/[id]/photo
   unlockedUntil: number;
   facilityName: string;
   log: LogEntry[];

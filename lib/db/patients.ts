@@ -213,7 +213,6 @@ export async function portalPayload(row: PatientRow, unlockedUntil: number, clin
     lastReissueReason: await lastReissueReason(row.id),
     updatedAt: row.updated_at,
     verifiedFields: row.verified_fields ?? [],
-    hasPhoto: Boolean(row.photo_path), // the photo itself only via /photo (two keys)
     unlockedUntil,
     facilityName: clinician.facilityName,
     log: await getAccessLog(row.id),
@@ -255,7 +254,7 @@ export const editedRecordSchema = z.object({
   patient: z.object({
     name: text(120).min(1),
     nameAr: text(120).optional(),
-    dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    dateOfBirth: z.string().regex(/^\d{4}(-\d{2}-\d{2})?$/).optional(), // full date or year only
     sex: z.enum(["F", "M"]).optional(),
     bloodType: z.enum(["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]).optional(),
   }),

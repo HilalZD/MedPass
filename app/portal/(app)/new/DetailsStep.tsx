@@ -1,17 +1,22 @@
 "use client";
 
-// Step 3: patient details, allergies and critical conditions.
+// Step 3: patient details, card photo, allergies and critical conditions.
 // The AI's name and date of birth are only suggestions: they stay yellow until
 // the clinician confirms them (or types over them) after checking the patient's ID.
+// "Next" stays locked until name, date of birth (full or year), sex and blood
+// type (or "Unknown") are given, and the photo question is answered.
 
 import type { ExtractedDraft } from "@/lib/extract";
-import PhotoField, { type PhotoValue } from "./PhotoField";
+import { BloodSelect, DobInput, FieldError, SexSelect, identityIssues } from "./identity";
+import PhotoField, { photoDecided, type PhotoValue } from "./PhotoField";
 import { NameList } from "./ReviewStep";
 import { btn, input } from "./ui";
 
 export const BLOOD_TYPES = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"] as const;
 
-export type Confirmed = { name: boolean; dob: boolean };
+// name/dob: the clinician checked the AI's value against the ID.
+// blood: a blood type (or "Unknown") was explicitly chosen.
+export type Confirmed = { name: boolean; dob: boolean; blood: boolean };
 
 export default function DetailsStep({
   draft,
@@ -35,8 +40,11 @@ export default function DetailsStep({
   const p = draft.patient;
   const setPatient = (patch: Partial<ExtractedDraft["patient"]>) => setDraft({ ...draft, patient: { ...p, ...patch } });
   const bloodTypeOk = !p.bloodType || (BLOOD_TYPES as readonly string[]).includes(p.bloodType);
-  // An empty date of birth needs no confirmation (it is optional).
-  const ready = p.name.trim() !== "" && confirmed.name && (!p.dateOfBirth || confirmed.dob) && bloodTypeOk && (!photo.photo || photo.consent);
+  // A valid blood type read from the paper counts as chosen; otherwise pick one or "Unknown".
+  const bloodChosen = bloodTypeOk && (confirmed.blood || Boolean(p.bloodType));
+  const issues = identityIssues(p, bloodChosen);
+  const issue = (f: string) => issues.find((i) => i.field === f);
+  const ready = issues.length === 0 && confirmed.name && confirmed.dob && photoDecided(photo);
 
   return (
     <section className="flex flex-col gap-5">
@@ -57,6 +65,7 @@ export default function DetailsStep({
             setConfirmed({ ...confirmed, name: true }); // typing it = the clinician checked it
           }}
         />
+        <FieldError issue={issue("name")} />
       </CheckedField>
 
       <label className="flex flex-col gap-1 rounded-xl border-2 border-gray-200 p-3 text-lg font-medium">
@@ -75,42 +84,48 @@ export default function DetailsStep({
       </label>
 
       <CheckedField
-        label="Date of birth (optional)"
+        label="Date of birth · تاريخ الولادة"
         confirmed={confirmed.dob || !p.dateOfBirth}
         onConfirm={() => setConfirmed({ ...confirmed, dob: true })}
         showConfirm={Boolean(p.dateOfBirth)}
       >
-        <input
-          className={input}
-          type="date"
-          value={p.dateOfBirth ?? ""}
-          max={new Date().toISOString().slice(0, 10)}
-          onChange={(e) => {
-            setPatient({ dateOfBirth: e.target.value || undefined });
+        <DobInput
+          value={p.dateOfBirth}
+          onChange={(v) => {
+            setPatient({ dateOfBirth: v });
             setConfirmed({ ...confirmed, dob: true });
           }}
         />
-        {p.ageWritten && <p className="text-base text-gray-700">The paper says age {p.ageWritten}. Ask the patient for the full date.</p>}
+        {p.ageWritten && (
+          <p className="text-base text-gray-700">
+            The paper says age {p.ageWritten}. Ask the patient. If they only know the year, use &quot;Year only&quot;.
+          </p>
+        )}
+        <FieldError issue={issue("dob")} />
       </CheckedField>
 
       <div className="grid grid-cols-2 gap-3">
         <label className="flex flex-col gap-1 text-lg font-medium">
-          Sex
-          <select className={input} value={p.sex ?? ""} onChange={(e) => setPatient({ sex: (e.target.value || undefined) as "F" | "M" | undefined })}>
-            <option value="">Not given</option>
-            <option value="F">Female</option>
-            <option value="M">Male</option>
-          </select>
+          <span>
+            Sex · <span lang="ar">الجنس</span>
+          </span>
+          <SexSelect value={p.sex} onChange={(sex) => setPatient({ sex })} />
+          <FieldError issue={issue("sex")} />
         </label>
         <label className="flex flex-col gap-1 text-lg font-medium">
-          Blood type
-          <select className={input} value={bloodTypeOk ? (p.bloodType ?? "") : ""} onChange={(e) => setPatient({ bloodType: e.target.value || undefined })}>
-            <option value="">Unknown</option>
-            {BLOOD_TYPES.map((b) => (
-              <option key={b}>{b}</option>
-            ))}
-          </select>
+          <span>
+            Blood type · <span lang="ar">فئة الدم</span>
+          </span>
+          <BloodSelect
+            value={bloodTypeOk ? p.bloodType : undefined}
+            chosen={bloodChosen}
+            onChange={(bloodType) => {
+              setPatient({ bloodType });
+              setConfirmed({ ...confirmed, blood: true });
+            }}
+          />
           {!bloodTypeOk && <span className="text-base text-yellow-900">The paper says &quot;{p.bloodType}&quot;. Pick the right one.</span>}
+          <FieldError issue={issue("blood")} />
         </label>
       </div>
 
