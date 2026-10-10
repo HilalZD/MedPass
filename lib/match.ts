@@ -144,8 +144,10 @@ export function createMatcher(drugs: DrugRow[]): Matcher {
       return { drug: sameStrength[0], confidence: brandIsSure ? "high" : "low" };
     }
     if (distinctStrengths === 1 && distinctBrands(rows) === 1) {
-      // One product only (e.g. LANTUS 100IU/ml): the number on the paper is a dose.
-      return { drug: rows[0], confidence: brandIsSure ? "high" : "low" };
+      // One product only. "high" only if the paper gives NO strength: a written strength
+      // that differs ("Aspirin 81 mg" vs ASPIRIN PROTECT 100mg) must be checked by a human.
+      // (Insulin doses like "Lantus 18 units" are handled by the insulin rule above.)
+      return { drug: rows[0], confidence: brandIsSure && wanted.length === 0 ? "high" : "low" };
     }
     // Brand found but strength missing, different, or several products: closest row, low.
     const closest = sameStrength[0] ?? closestByStrength(rows, wanted);

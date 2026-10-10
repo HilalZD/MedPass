@@ -1,6 +1,6 @@
 ﻿brand,ingredient,verified,source,note
-Glucophage,metformin,no,https://www.moph.gov.lb/en/Drugs/view/409,"XR = prolonged release | matches: GLUCOPHAGE [1000mg, 850mg]; GLUCOPHAGE XR [1000mg, 500mg, 750mg] | web: Metformin HCl - 850mg (ATC A10BA02)"
-Concor,bisoprolol,no,https://www.moph.gov.lb/en/Drugs/view/1501,"matches: CONCOR [10mg, 5mg]; CONCOR COR [2.5mg] | web: Bisoprolol fumarate - 5mg (ATC C07AB07)"
+Glucophage,metformin,yes,https://www.moph.gov.lb/en/Drugs/view/409,"XR = prolonged release | matches: GLUCOPHAGE [1000mg, 850mg]; GLUCOPHAGE XR [1000mg, 500mg, 750mg] | web: Metformin HCl - 850mg (ATC A10BA02)"
+Concor,bisoprolol,yes,https://www.moph.gov.lb/en/Drugs/view/1501,"matches: CONCOR [10mg, 5mg]; CONCOR COR [2.5mg] | web: Bisoprolol fumarate - 5mg (ATC C07AB07)"
 Concor AM,bisoprolol + amlodipine,no,https://www.moph.gov.lb/en/Drugs/view/1554,"matches: CONCOR AM 2.5 [2.5mg]; CONCOR AM 5 [5mg] | web: Bisoprolol fumarate - 2.5mg, Amlodipine besylate - 5mg (ATC C07FB07)"
 Concor Plus,bisoprolol + hydrochlorothiazide,no,https://www.moph.gov.lb/en/Drugs/view/1546,"matches: CONCOR PLUS [?] | web: Bisoprolol fumarate - 5mg, Hydrochlorothiazide - 12.5mg (ATC C07BB07)"
 Concor T,,no,,combination not verified: ingredient left empty on purpose (stops the shorter brand row from matching) | matches: CONCOR T 2.5 [?]; CONCOR T 5 [?]
@@ -8,17 +8,17 @@ Lipitor,atorvastatin,no,,NOT in the MoPH price list (0 rows). Atorvastatin is so
 Apo-Atorvastatin,atorvastatin,no,https://www.moph.gov.lb/en/Drugs/view/1885,"matches: APO-ATORVASTATIN [10mg, 20mg, 40mg] | web: Atorvastatin (calcium) - 10mg (ATC C10AA05)"
 Atorvastatin Pharmadex,atorvastatin,no,https://www.moph.gov.lb/en/Drugs/view/1911,matches: ATORVASTATIN PHARMADEX [20mg] | web: Atorvastatin - 20mg (ATC C10AA05)
 Atorvastatine Arrow,atorvastatin,no,https://www.moph.gov.lb/en/Drugs/view/1891,"covers both spellings GENERIQUES / GENERQUES | matches: ATORVASTATINE ARROW GENERIQUES [10mg, 20mg, 80mg]; ATORVASTATINE ARROW GENERQUES [40mg] | web: Atorvastatin - 10mg (ATC C10AA05)"
-Aspirin Protect,acetylsalicylic acid,no,https://www.moph.gov.lb/en/Drugs/view/794,"low-dose: 100 mg. No 75 mg product in the list; 81 mg = Aspicot, Aspi-Cor, Asprothin | matches: ASPIRIN PROTECT [100mg] | web: Acetylsalicylic acid - 100mg (ATC B01AC06)"
-Aspicot,acetylsalicylic acid,no,https://www.moph.gov.lb/en/Drugs/view/792,"low-dose 81 mg and 100 mg | matches: ASPICOT [100mg, 81mg] | web: Acetylsalicylic acid - 81mg (ATC B01AC06)"
-Aspi-Cor,acetylsalicylic acid,no,https://www.moph.gov.lb/en/Drugs/view/791,low-dose 81 mg | matches: ASPI-COR [81mg] | web: Acetylsalicylic acid - 81mg (ATC B01AC06)
-Asprothin,acetylsalicylic acid,no,https://www.moph.gov.lb/en/Drugs/view/793,low-dose 81 mg | matches: ASPROTHIN [81mg] | web: Acetylsalicylic acid - 81mg (ATC B01AC06)
+Aspirin Protect,acetylsalicylic acid,yes,https://www.moph.gov.lb/en/Drugs/view/794,"low-dose: 100 mg. No 75 mg product in the list; 81 mg = Aspicot, Aspi-Cor, Asprothin | matches: ASPIRIN PROTECT [100mg] | web: Acetylsalicylic acid - 100mg (ATC B01AC06)"
+Aspicot,acetylsalicylic acid,yes,https://www.moph.gov.lb/en/Drugs/view/792,"low-dose 81 mg and 100 mg | matches: ASPICOT [100mg, 81mg] | web: Acetylsalicylic acid - 81mg (ATC B01AC06)"
+Aspi-Cor,acetylsalicylic acid,yes,https://www.moph.gov.lb/en/Drugs/view/791,low-dose 81 mg | matches: ASPI-COR [81mg] | web: Acetylsalicylic acid - 81mg (ATC B01AC06)
+Asprothin,acetylsalicylic acid,yes,https://www.moph.gov.lb/en/Drugs/view/793,low-dose 81 mg | matches: ASPROTHIN [81mg] | web: Acetylsalicylic acid - 81mg (ATC B01AC06)
 Aspiphar,acetylsalicylic acid,no,https://www.moph.gov.lb/en/Drugs/view/797,low-dose 100 mg | matches: ASPIPHAR [100mg] | web: Acetylsalicylic acid - 100mg (ATC B01AC06)
 Aspirine,acetylsalicylic acid,no,https://www.moph.gov.lb/en/Drugs/view/4486,"0.3 g = 300 mg, NOT low-dose | matches: ASPIRINE [0.3g] | web: Acetylsalicylic acid - 300mg (ATC N02BA01)"
 Aspirine C,acetylsalicylic acid + ascorbic acid,no,https://www.moph.gov.lb/en/Drugs/view/4487,"matches: ASPIRINE C EFFERVESCENT [?] | web: Acetylsalicylic acid - 400mg, Vitamin C - 240mg (ATC N02BA51)"
-Amlor,amlodipine,no,https://www.moph.gov.lb/en/Drugs/view/1556,matches: AMLOR [5mg] | web: Amlodipine besylate - 5mg (ATC C08CA01)
-Lantus,insulin glargine,no,https://www.moph.gov.lb/en/Drugs/view/398,product strength 100 IU/ml; the 18 IU on the paper is the patient's DOSE | matches: LANTUS [100IU/ml]; LANTUS SOLOSTAR [100IU/ml] | web: Insulin glargine - 100IU/ml (ATC A10AE04)
-Coversyl,perindopril,no,https://www.moph.gov.lb/en/Drugs/view/1621,"only COVERSYL ARGININE (perindopril arginine) exists in the list | matches: COVERSYL ARGININE [10mg, 5mg] | web: Perindopril arginine - 10mg (ATC C09AA04)"
-Panadol,paracetamol,no,https://www.moph.gov.lb/en/Drugs/view/4490,matches: PANADOL ACTIFAST [500mg]; PANADOL ADVANCE [500mg]; PANADOL B&I [120mg/5ml]; PANADOL JOINT [665mg] | web: Paracetamol - 500mg (ATC N02BE01)
+Amlor,amlodipine,yes,https://www.moph.gov.lb/en/Drugs/view/1556,matches: AMLOR [5mg] | web: Amlodipine besylate - 5mg (ATC C08CA01)
+Lantus,insulin glargine,yes,https://www.moph.gov.lb/en/Drugs/view/398,product strength 100 IU/ml; the 18 IU on the paper is the patient's DOSE | matches: LANTUS [100IU/ml]; LANTUS SOLOSTAR [100IU/ml] | web: Insulin glargine - 100IU/ml (ATC A10AE04)
+Coversyl,perindopril,yes,https://www.moph.gov.lb/en/Drugs/view/1623,"only COVERSYL ARGININE (perindopril arginine) exists in the list | matches: COVERSYL ARGININE [10mg, 5mg] | web: Perindopril arginine - 5mg (ATC C09AA04), COVERSYL ARGININE 5mg page"
+Panadol,paracetamol,yes,https://www.moph.gov.lb/en/Drugs/view/4490,matches: PANADOL ACTIFAST [500mg]; PANADOL ADVANCE [500mg]; PANADOL B&I [120mg/5ml]; PANADOL JOINT [665mg] | web: Paracetamol - 500mg (ATC N02BE01)
 Panadol Extra,paracetamol + caffeine,no,https://www.moph.gov.lb/en/Drugs/view/4578,"matches: PANADOL EXTRA WITH OPTIZORB [?] | web: Paracetamol - 500mg, Caffeine - 65mg (ATC N02BE51)"
 Panadol Cold,,no,,combination not verified: ingredient left empty on purpose (stops the shorter brand row from matching) | matches: PANADOL COLD & FLU ALL IN ONE [?]; PANADOL COLD & FLU DAY [?]; PANADOL COLD & FLU VAPOUR RELEASE + DECONGESTANT [?]; PANADOL COLD AND FLU [?]
 Panadol Night,,no,,combination not verified: ingredient left empty on purpose (stops the shorter brand row from matching) | matches: PANADOL NIGHT [?]

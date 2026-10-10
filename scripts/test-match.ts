@@ -39,6 +39,17 @@ expect("Glucophage 850mg in name", matchMed(med("Glucophage 850mg")), "high", "G
 expect("Concor 7 mg (no such)", matchMed(med("Concor", "7 mg")), "low");
 expect("Xyzzyqq (nonsense)", matchMed(med("Xyzzyqq", "10mg")), null);
 
+console.log("\n== a written strength that differs is never high ==");
+{
+  const m = matchMed(med("Aspirin", "81 mg"));
+  const ok = m === null || m.confidence === "low";
+  if (!ok) failures++;
+  console.log(`${ok ? "PASS" : "FAIL"}  ${"Aspirin 81 mg".padEnd(26)} -> ${show(m)}   (ASPIRIN PROTECT is 100mg: must not be high)`);
+}
+expect("Lantus (no strength)", matchMed(med("Lantus")), "high", "LANTUS");
+expect("Amlor (no strength)", matchMed(med("Amlor")), "high", "AMLOR");
+expect("Amlor 10 mg (no such)", matchMed(med("Amlor", "10 mg")), "low", "AMLOR");
+
 console.log("\n== insulin: the number on the paper is a dose ==");
 expect("Lantus 18 units", matchMed(med("Lantus", "18 units")), "high", "LANTUS");
 expect("Lantus 18 IU", matchMed(med("Lantus", "18 IU")), "high", "LANTUS");

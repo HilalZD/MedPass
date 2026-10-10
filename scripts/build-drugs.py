@@ -343,23 +343,49 @@ def brand_words(name: str) -> tuple[str, ...]:
 def apply_curated(drugs: list[dict]) -> dict:
     with CURATED.open(encoding="utf-8-sig", newline="") as f:
         rows = list(csv.DictReader(f))
-    verified = [r for r in rows if r["verified"].strip().lower() == "yes"]
+    is_verified = lambda r: r["verified"].strip().lower() == "yes"
     is_alias = lambda r: r["note"].strip().lower() == "alias"
-    aliases = {clean(r["brand"]).lower(): clean(r["ingredient"]).lower() for r in verified if is_alias(r)}
-    brand_rows = [(brand_words(r["brand"]), clean(r["ingredient"]).lower()) for r in verified if not is_alias(r)]
+    aliases = {clean(r["brand"]).lower(): clean(r["ingredient"]).lower() for r in rows if is_alias(r) and is_verified(r)}
+    # ALL brand rows, verified or not: an unverified longer brand ("Concor AM") must still
+    # stop a shorter verified one ("Concor") from labelling a combination product.
+    brand_rows = [(brand_words(r["brand"]), clean(r["ingredient"]).lower(), is_verified(r)) for r in rows if not is_alias(r)]
 
-    stats = {"applied": 0,
-             "unverified": sum(1 for r in rows if r["verified"].strip().lower() != "yes")}
+    stats = {"applied": 0, "blocked": [],
+             "unverified": sum(1 for r in rows if not is_verified(r))}
     for d in drugs:
         dw = brand_words(d["brand"])
-        matches = [(words, ing) for words, ing in brand_rows if words and dw[: len(words)] == words]
-        if matches:
-            ingredient = max(matches, key=lambda m: len(m[0]))[1]  # longest brand wins
-            if ingredient:
-                d.setdefault("_cands", {})["curated"] = ingredient
-                stats["applied"] += 1
+        matches = [m for m in brand_rows if m[0] and dw[: len(m[0])] == m[0]]
+        if not matches:
+            continue
+        words, ingredient, verified = max(matches, key=lambda m: len(m[0]))  # longest brand wins
+        if verified and ingredient:
+            d.setdefault("_cands", {})["curated"] = ingredient
+            d["_curated_brand"] = words
+            stats["applied"] += 1
+        elif any(m[2] and m[1] for m in matches):
+            # A shorter verified row would have matched, but a longer unverified one wins: nothing applied.
+            stats["blocked"].append((d["brand"], " ".join(words)))
+    check_curated_longest_match(drugs, brand_rows)
     stats["aliases"] = aliases
     return stats
+
+
+def check_curated_longest_match(drugs: list[dict], brand_rows: list[tuple]) -> None:
+    """Safety check, done a second, independent way: walk the curated brands from longest
+    to shortest; the first one that matches a drug is the only row allowed to label it.
+    Fails the build if a drug got a curated ingredient from any other row (for example a
+    shorter verified "Concor" on CONCOR AM, when the longer "Concor AM" is unverified)."""
+    by_length = sorted(brand_rows, key=lambda m: len(m[0]), reverse=True)
+    for d in drugs:
+        if "_curated_brand" not in d:
+            continue
+        dw = brand_words(d["brand"])
+        winner = next(m for m in by_length if m[0] and dw[: len(m[0])] == m[0])
+        assert winner[0] == d["_curated_brand"] and winner[2], (
+            f"{d['brand']}: curated ingredient from {' '.join(d['_curated_brand'])!r}, "
+            f"but the longest matching curated brand is {' '.join(winner[0])!r} (verified={winner[2]})"
+        )
+        del d["_curated_brand"]
 
 
 # ---------------------------------------------------------------------------
@@ -522,7 +548,10 @@ def main() -> None:
 
     curated = apply_curated(drugs)
     print("\n== Curated list ==")
-    print(f"  verified rows matching drugs: {curated['applied']}")
+    print(f"  drugs labelled by a verified row: {curated['applied']}")
+    print(f"  blocked by a longer unverified brand: {len(curated['blocked'])}"
+          + (f"  e.g. {curated['blocked'][:4]}" if curated["blocked"] else ""))
+    print("  check passed: no curated ingredient where a longer unverified curated brand matches")
     print(f"  still unverified rows:        {curated['unverified']}")
 
     moph_outcome, joined = join_moph(drugs)
