@@ -2,7 +2,7 @@
   "v": 2,
   "id": "MP-HZ26-DM8X",
   "cardVersion": 1,
-  "patient": { "name": "Hilal Zeidan", "nameAr": "هلال زيدان", "sex": "M" },
+  "patient": { "name": "Hilal Zeidan", "nameAr": "هلال زيدان", "dateOfBirth": "2005-03-14", "sex": "M", "bloodType": "O+" },
   "emergency": { "allergies": ["Penicillin"], "critical": ["Insulin-dependent diabetes"] },
   "conditions": [{ "name": "Type 2 diabetes", "verified": "clinician" }],
   "meds": [
