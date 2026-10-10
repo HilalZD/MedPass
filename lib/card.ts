@@ -23,6 +23,7 @@
  */
 
 import { deflateRaw, inflateRaw } from "pako";
+import QRCode from "qrcode";
 import { z } from "zod";
 import type { MedPassRecord } from "./types";
 
@@ -35,6 +36,42 @@ const PBKDF2_ITERATIONS = 600_000;
 
 export const WRONG_PIN = "Wrong PIN";
 export const NOT_A_CARD = "Not a MedPass card";
+export const CARD_FULL = "Card is full";
+
+/**
+ * Size budget. The biggest QR (version 1-40, error correction level M) we
+ * allow on a card. Level M can lose ~15% of the code to scratches/folds and
+ * still scan. Provisional: will be adjusted after testing printed cards.
+ */
+export const MAX_QR_VERSION = 20;
+
+let maxQrChars: number | undefined;
+/**
+ * How many alphanumeric characters fit in a MAX_QR_VERSION, level-M QR.
+ * Measured once with qrcode itself (binary search), so changing
+ * MAX_QR_VERSION is the only edit needed.
+ */
+function maxQrCharsFor(): number {
+  if (maxQrChars === undefined) {
+    const fits = (n: number) => {
+      try {
+        QRCode.create("A".repeat(n), { version: MAX_QR_VERSION, errorCorrectionLevel: "M" });
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    let lo = 1; // fits
+    let hi = 4297; // more than any QR (v40-L holds 4296)
+    while (hi - lo > 1) {
+      const mid = Math.floor((lo + hi) / 2);
+      if (fits(mid)) lo = mid;
+      else hi = mid;
+    }
+    maxQrChars = lo;
+  }
+  return maxQrChars;
+}
 
 export type Emergency = { name: string; allergies: string[]; critical: string[] };
 
@@ -299,13 +336,88 @@ function parseEmergency(bytes: Uint8Array): Emergency {
 // Public API
 // ---------------------------------------------------------------------------
 
+/** The two byte strings that go on a card: plaintext emergency + (unencrypted) secret part. */
+function serialize(rec: MedPassRecord): { emergency: Uint8Array; plaintext: Uint8Array } {
+  const emergency = squeeze({ name: rec.patient.name, ...rec.emergency } satisfies Emergency);
+  if (emergency.length > 0xffff) throw new Error(CARD_FULL);
+  return { emergency, plaintext: squeeze(pack(rec)) };
+}
+
+/** One binary blob: length | emergency | salt | iv | ciphertext+tag, as "MP1:" + Base45. */
+function assemble(emergency: Uint8Array, salt: Uint8Array, iv: Uint8Array, ciphertext: Uint8Array): string {
+  const length = new Uint8Array([emergency.length >> 8, emergency.length & 0xff]);
+  return PREFIX + toBase45(concat(length, emergency, salt, iv, ciphertext));
+}
+
+/** QR version qrcode would pick at level M; 41 means "too big for any QR". */
+function qrVersionOf(payload: string): number {
+  try {
+    return QRCode.create(payload, { errorCorrectionLevel: "M" }).version;
+  } catch {
+    return 41;
+  }
+}
+
+/**
+ * The payload a record WOULD produce, without knowing the PIN. AES-GCM output
+ * is always plaintext length + 16 (the tag), so dummy bytes of the right length
+ * give the right size. 0xFF bytes become letters ("FGW") in Base45, never runs
+ * of digits that a QR could pack more tightly, so this is a safe upper bound.
+ */
+function estimatePayload(rec: MedPassRecord): string {
+  const { emergency, plaintext } = serialize(rec);
+  const dummy = (n: number) => new Uint8Array(n).fill(0xff);
+  return assemble(emergency, dummy(SALT_BYTES), dummy(IV_BYTES), dummy(plaintext.length + TAG_BYTES));
+}
+
+export type FitResult = {
+  record: MedPassRecord;
+  droppedVisits: MedPassRecord["visits"];
+  qrVersion: number;
+  fillPercent: number;
+};
+
+/**
+ * Make a record fit the card's size budget by dropping the OLDEST visits only.
+ * Allergies, critical info, conditions, meds and referrals are never dropped.
+ * Visits come back sorted newest first. If it still does not fit with zero
+ * visits, qrVersion stays > MAX_QR_VERSION and the UI should say "Card is full".
+ * Nothing is dropped silently: the UI shows droppedVisits for a human to confirm.
+ */
+export function fitRecord(record: MedPassRecord): FitResult {
+  const rec = recordSchema.parse(record);
+  let visits = [...rec.visits].sort((a, b) => b.date.localeCompare(a.date));
+  const droppedVisits: MedPassRecord["visits"] = [];
+
+  let payload = estimatePayload({ ...rec, visits });
+  let qrVersion = qrVersionOf(payload);
+  while (qrVersion > MAX_QR_VERSION && visits.length > 0) {
+    droppedVisits.unshift(visits[visits.length - 1]); // keep droppedVisits newest first too
+    visits = visits.slice(0, -1);
+    payload = estimatePayload({ ...rec, visits });
+    qrVersion = qrVersionOf(payload);
+  }
+
+  return {
+    record: { ...rec, visits },
+    droppedVisits,
+    qrVersion,
+    fillPercent: Math.round((payload.length / maxQrCharsFor()) * 100),
+  };
+}
+
+/**
+ * Encrypt a record into a card payload. Never drops data: if the result is
+ * bigger than MAX_QR_VERSION it throws "Card is full". Call fitRecord() first
+ * and let a human confirm what gets left off.
+ */
 export async function encode(record: MedPassRecord, pin: string): Promise<string> {
   if (!/^\d{6}$/.test(pin)) throw new Error("PIN must be 6 digits");
   const rec = recordSchema.parse(record); // refuse to print a card from malformed data
 
   // 1. Plaintext part: only what a first responder needs with no PIN.
-  const emergency = squeeze({ name: rec.patient.name, ...rec.emergency } satisfies Emergency);
-  if (emergency.length > 0xffff) throw new Error("Emergency section is too long");
+  //    Secret part: everything else, packed and compressed (encrypted below).
+  const { emergency, plaintext } = serialize(rec);
 
   // 2. Fresh random salt and IV for every card. The IV ("nonce") must never be
   //    reused with the same key; a random 12-byte IV is the AES-GCM standard.
@@ -319,14 +431,14 @@ export async function encode(record: MedPassRecord, pin: string): Promise<string
     await globalThis.crypto.subtle.encrypt(
       { name: "AES-GCM", iv, additionalData: aadFor(emergency) },
       key,
-      concat(squeeze(pack(rec))),
+      concat(plaintext),
     ),
   );
 
-  // 4. One binary blob: length | emergency | salt | iv | ciphertext+tag.
-  //    Salt and IV are not secret; the decoder needs them to rebuild the key.
-  const length = new Uint8Array([emergency.length >> 8, emergency.length & 0xff]);
-  return PREFIX + toBase45(concat(length, emergency, salt, iv, ciphertext));
+  // 4. Salt and IV are not secret; the decoder needs them to rebuild the key.
+  const payload = assemble(emergency, salt, iv, ciphertext);
+  if (qrVersionOf(payload) > MAX_QR_VERSION) throw new Error(CARD_FULL);
+  return payload;
 }
 
 export async function decode(payload: string, pin: string): Promise<MedPassRecord> {

@@ -7,7 +7,7 @@ import { deepStrictEqual } from "node:assert";
 import { readFileSync } from "node:fs";
 import { deflateRaw } from "pako";
 import QRCode from "qrcode";
-import { decode, encode, fromBase45, readEmergency, toBase45 } from "../lib/card";
+import { MAX_QR_VERSION, decode, encode, fitRecord, fromBase45, readEmergency, toBase45 } from "../lib/card";
 import type { MedPassRecord } from "../lib/types";
 
 const PIN = "123456";
@@ -123,20 +123,74 @@ async function main() {
   checkAlphanumeric("5", payload);
   console.log(`INFO  5. sample payload: ${payload.length} chars, QR version ${qrVersion(payload)} (level M)`);
 
-  // 6. Size of a heavy card (and it must still round-trip).
-  const heavy = heavyRecord();
-  const heavyPayload = await encode(heavy, PIN);
-  let heavyEqual = true;
-  try {
-    deepStrictEqual(await decode(heavyPayload, PIN), heavy);
-  } catch {
-    heavyEqual = false;
-  }
-  check("6. heavy record round trip", heavyEqual);
-  checkAlphanumeric("6", heavyPayload);
-  console.log(
-    `INFO  6. heavy payload (12 meds, 5 conditions, 4 visits): ${heavyPayload.length} chars, QR version ${qrVersion(heavyPayload)} (level M)`,
+  // 5a. Size budget: the sample fits with nothing dropped.
+  const fitSample = fitRecord(fixture);
+  check(
+    `5a. sample fits budget (QR <= v${MAX_QR_VERSION}) with 0 visits dropped`,
+    fitSample.droppedVisits.length === 0 && fitSample.qrVersion <= MAX_QR_VERSION,
+    `estimated v${fitSample.qrVersion}, fill ${fitSample.fillPercent}%`,
   );
+  check("5a. size estimate is never smaller than the real card", fitSample.qrVersion >= qrVersion(payload));
+
+  // 6. Heavy card: fitRecord drops the oldest visits until it fits (or reports full).
+  const heavy = heavyRecord();
+  const fitHeavy = fitRecord(heavy);
+  console.log(
+    `INFO  6. heavy (12 meds, 5 conditions, 4 visits): dropped ${fitHeavy.droppedVisits.length} visit(s) ` +
+      `[${fitHeavy.droppedVisits.map((v) => v.date).join(", ")}], final QR v${fitHeavy.qrVersion}, fill ${fitHeavy.fillPercent}%`,
+  );
+  check(
+    "6. heavy: kept visits are the newest ones",
+    fitHeavy.record.visits.every((kept) => fitHeavy.droppedVisits.every((d) => kept.date >= d.date)),
+  );
+  check(
+    "6. heavy: meds/conditions/referrals/emergency untouched",
+    fitHeavy.record.meds.length === 12 &&
+      fitHeavy.record.conditions.length === 5 &&
+      fitHeavy.record.referrals.length === heavy.referrals.length &&
+      JSON.stringify(fitHeavy.record.emergency) === JSON.stringify(heavy.emergency),
+  );
+  if (fitHeavy.qrVersion <= MAX_QR_VERSION) {
+    const heavyPayload = await encode(fitHeavy.record, PIN);
+    let heavyEqual = true;
+    try {
+      deepStrictEqual(await decode(heavyPayload, PIN), fitHeavy.record);
+    } catch {
+      heavyEqual = false;
+    }
+    check("6. fitted heavy record round trip", heavyEqual, `real QR v${qrVersion(heavyPayload)}`);
+    checkAlphanumeric("6", heavyPayload);
+  } else {
+    const err = await throwsMessage(() => encode(fitHeavy.record, PIN));
+    check('6. heavy does not fit even with 0 visits -> encode throws "Card is full"', err === "Card is full", `got: ${err}`);
+  }
+  const untrimmed = await throwsMessage(() => encode(heavy, PIN));
+  check('6. encode never trims by itself: untrimmed heavy throws "Card is full"', untrimmed === "Card is full", `got: ${untrimmed}`);
+
+  // 6c. 30 meds with long, distinct names: can never fit.
+  // Names come from a fixed pseudo-random generator so deflate cannot shrink
+  // them away (30 near-identical names compress to almost nothing).
+  let seed = 42;
+  const word = (len: number) =>
+    Array.from({ length: len }, () => {
+      seed = (seed * 1103515245 + 12345) % 2147483648;
+      return "abcdefghijklmnopqrstuvwxyz"[seed % 26];
+    }).join("");
+  const huge: MedPassRecord = {
+    ...fixture,
+    meds: Array.from({ length: 30 }, (_, i) => ({
+      name: `${word(9)} ${word(7)} retard`,
+      ingredient: `${word(12)} hydrochloride`,
+      strength: `${(i + 1) * 5} mg`,
+      frequency: "twice daily after meals",
+      status: "green" as const,
+      verified: "patient" as const,
+    })),
+  };
+  const fitHuge = fitRecord(huge);
+  check(`6c. 30 long meds: fitRecord reports qrVersion > ${MAX_QR_VERSION}`, fitHuge.qrVersion > MAX_QR_VERSION, `v${fitHuge.qrVersion}, fill ${fitHuge.fillPercent}%`);
+  const hugeErr = await throwsMessage(() => encode(huge, PIN));
+  check('6c. 30 long meds: encode throws "Card is full"', hugeErr === "Card is full", `got: ${hugeErr}`);
 
   // 7. Decode time (dominated by the 600k PBKDF2 iterations).
   const t0 = performance.now();
