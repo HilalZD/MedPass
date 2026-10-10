@@ -207,11 +207,23 @@ function MedItem({
         <div className="flex flex-col gap-2">
           <p className="text-lg font-semibold">Did you mean…?</p>
           {candidates.length === 0 && (
-            <p className="text-base text-gray-700">No suggestions. Use Edit to type the name, or Remove.</p>
+            <p className="text-base text-gray-700">
+              No match. Type the name. <span lang="ar">لا يوجد تطابق. اكتب الاسم.</span>
+            </p>
           )}
+          {/* The ingredient goes UNDER each brand, so look-alike brands with different
+              ingredients (e.g. PANADOL SINUS vs PANADOL ADVANCE) can't be confused. */}
           {candidates.map((d) => (
-            <button key={d.id} className={`${btn.small} text-start`} onClick={() => onChange(fromDrug(med, d))}>
-              {d.brand} {d.strength} <span className="text-sm text-gray-600">({d.ingredient})</span>
+            <button key={d.id} className={`${btn.small} flex flex-col items-start text-start`} onClick={() => onChange(fromDrug(med, d))}>
+              <span className="text-lg">
+                {d.brand} {d.strength}
+              </span>
+              {d.ingredient ? (
+                <span className="text-base font-normal text-gray-700">{d.ingredient}</span>
+              ) : (
+                <span className="text-base font-normal text-amber-800">⚠ Ingredient not listed in the MoPH data. Check the box.</span>
+              )}
+              <span className="text-sm font-normal text-gray-500">{d.form}</span>
             </button>
           ))}
           {candidates.length > 0 && (
