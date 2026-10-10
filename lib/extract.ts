@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { MedMatch } from "./match";
+import { strengthNumbers, type MedMatch } from "./match";
 import type { Med, MedPassRecord } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -282,6 +282,18 @@ export const unresolvedMeds = (draft: ExtractedDraft) => draft.meds.filter((m) =
 
 export const NOT_IN_MOPH_LIST = "Not found in the MoPH list, please check";
 
+// The yellow note for an unsure ("low") match: name the closest MoPH product,
+// and say WHY it is unsure, so the clinician knows what to check.
+// e.g. "Aspirin 81 mg" vs ASPIRIN PROTECT 100mg → the strength differs.
+export function lowMatchNote(med: Med, drug: { brand: string; strength: string }): string {
+  const written = strengthNumbers(med.strength).join("/");
+  const product = strengthNumbers(drug.strength).join("/");
+  const closest = `Closest MoPH product: ${drug.brand} ${drug.strength}.`;
+  return written && product && written !== product
+    ? `${closest} Strength differs, please check.`
+    : `${closest} Not a sure match, please check.`;
+}
+
 // For every readable med: a sure ("high") match fills drugId and the MoPH
 // ingredient; no match or an unsure ("low") one turns the med yellow so a human
 // checks it. Unreadable meds are left alone: the review screen offers
@@ -292,7 +304,8 @@ export function applyMatches(draft: ExtractedDraft, matchMed: (med: Med) => MedM
     meds: draft.meds.map((med) => {
       if (med.status === "unreadable") return { ...med };
       const m = matchMed(med);
-      if (!m || m.confidence === "low") return { ...med, status: "yellow", note: NOT_IN_MOPH_LIST };
+      if (!m) return { ...med, status: "yellow", note: NOT_IN_MOPH_LIST };
+      if (m.confidence === "low") return { ...med, status: "yellow", note: lowMatchNote(med, m.drug) };
       return { ...med, drugId: m.drug.id, ingredient: m.drug.ingredient };
     }),
   };

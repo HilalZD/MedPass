@@ -13,6 +13,7 @@ import { deepStrictEqual } from "node:assert";
 import { readFileSync } from "node:fs";
 import {
   NOT_IN_MOPH_LIST,
+  lowMatchNote,
   applyMatches,
   draftToRecord,
   mergeDrafts,
@@ -188,6 +189,25 @@ const tag = (papers: ExtractedPaper[]) => papers.map((p, i) => tagPaper(p, i + 1
   const fake = applyMatches(tag([{ ...empty(), meds: [{ raw: "x", name: "Zzqxor", strength: "5 mg", frequency: "once daily", status: "green" }] }])[0], matchMed);
   check("match: unknown drug → yellow + note", fake.meds[0].status === "yellow" && fake.meds[0].note === NOT_IN_MOPH_LIST);
   check("match: note stripped at save", !JSON.stringify(draftToRecord(fake, { id: "MP-AAAA-BBBB", cardVersion: 1 })).includes("note"));
+}
+
+// --- 11. Wording of unsure ("low") matches -------------------------------------
+{
+  const { matchMed } = createMatcher(JSON.parse(readFileSync("public/drugs.json", "utf8")) as DrugRow[]);
+  const aspirin = applyMatches(
+    tag([{ ...empty(), meds: [{ raw: "Aspirin 81mg", name: "Aspirin", strength: "81 mg", frequency: "once daily", status: "green" }] }])[0],
+    matchMed,
+  ).meds[0];
+  console.log(`      Aspirin 81 mg → ${aspirin.status}: "${aspirin.note}"`);
+  check("low match: yellow", aspirin.status === "yellow");
+  check("low match: names the closest MoPH product", /Closest MoPH product: ASPIRIN/.test(aspirin.note ?? ""));
+  check("low match: says the strength differs", /Strength differs/.test(aspirin.note ?? ""));
+  check("low match: no drugId set", !aspirin.drugId);
+
+  const same = lowMatchNote({ name: "Coversyl", strength: "5 mg", status: "green", verified: "patient" }, { brand: "COVERSYL ARGININE", strength: "5mg" });
+  check("low match, same strength: 'Not a sure match'", same === "Closest MoPH product: COVERSYL ARGININE 5mg. Not a sure match, please check.", same);
+  const noStrength = lowMatchNote({ name: "Panadol", status: "green", verified: "patient" }, { brand: "PANADOL ADVANCE", strength: "500mg" });
+  check("low match, no strength on paper: 'Not a sure match'", /Not a sure match/.test(noStrength), noStrength);
 }
 
 console.log(failures === 0 ? "\nAll tests passed." : `\n${failures} test(s) FAILED.`);
