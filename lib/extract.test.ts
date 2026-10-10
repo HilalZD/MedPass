@@ -10,7 +10,17 @@
  */
 
 import { deepStrictEqual } from "node:assert";
-import { draftToRecord, mergeDrafts, parsePaper, tagPaper, type ExtractedPaper } from "./extract";
+import { readFileSync } from "node:fs";
+import {
+  NOT_IN_MOPH_LIST,
+  applyMatches,
+  draftToRecord,
+  mergeDrafts,
+  parsePaper,
+  tagPaper,
+  type ExtractedPaper,
+} from "./extract";
+import { createMatcher, type DrugRow } from "./match";
 
 let failures = 0;
 function check(label: string, ok: boolean, detail = "") {
@@ -158,6 +168,26 @@ const tag = (papers: ExtractedPaper[]) => papers.map((p, i) => tagPaper(p, i + 1
   check("parse: year-only birth date dropped", p.patient.dateOfBirth === undefined);
   check("parse: invalid sex dropped", p.patient.sex === undefined);
   check("parse: null removed", !("bloodType" in p.patient));
+}
+
+// --- 10. MoPH matching with the real drugs.json -----------------------------
+{
+  const { matchMed } = createMatcher(JSON.parse(readFileSync("public/drugs.json", "utf8")) as DrugRow[]);
+  const { draft } = mergeDrafts(tag([arabicPaper, amlorPaper, glucophagePaper]));
+  const matched = applyMatches(draft, matchMed);
+  const byName = (n: string) => matched.meds.find((m) => m.name === n)!;
+  console.log(
+    "      " + matched.meds.map((m) => `${m.name}:${m.status}${m.drugId ? "+id" : ""}${m.note ? "(not found)" : ""}`).join("  "),
+  );
+  check("match: Amlor 5 mg found, drugId + ingredient filled", Boolean(byName("Amlor").drugId) && /amlodipine/i.test(byName("Amlor").ingredient ?? ""));
+  check("match: sure match keeps green", byName("Amlor").status === "green");
+  check("match: unreadable meds untouched", matched.meds.filter((m) => m.status === "unreadable").length === 2);
+  check("match: unreadable meds get no drugId", matched.meds.filter((m) => m.status === "unreadable").every((m) => !m.drugId));
+  check("match: input draft not changed", draft.meds.every((m) => !m.drugId));
+
+  const fake = applyMatches(tag([{ ...empty(), meds: [{ raw: "x", name: "Zzqxor", strength: "5 mg", frequency: "once daily", status: "green" }] }])[0], matchMed);
+  check("match: unknown drug → yellow + note", fake.meds[0].status === "yellow" && fake.meds[0].note === NOT_IN_MOPH_LIST);
+  check("match: note stripped at save", !JSON.stringify(draftToRecord(fake, { id: "MP-AAAA-BBBB", cardVersion: 1 })).includes("note"));
 }
 
 console.log(failures === 0 ? "\nAll tests passed." : `\n${failures} test(s) FAILED.`);

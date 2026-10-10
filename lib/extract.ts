@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { MedMatch } from "./match";
 import type { Med, MedPassRecord } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -14,9 +15,10 @@ import type { Med, MedPassRecord } from "./types";
 // strips everything that must not be saved (sourcePaper, raw, ageWritten).
 // ---------------------------------------------------------------------------
 
-type Sourced = { sourcePaper: number };
+type Sourced = { sourcePaper: number }; // 1-based paper number; 0 = added by hand during review
 
-export type DraftMed = Med & Sourced;
+// note: a message for the review screen only (e.g. "Not found in the MoPH list").
+export type DraftMed = Med & Sourced & { note?: string };
 export type DraftItem = { name: string } & Sourced; // an allergy or a critical condition
 export type DraftCondition = MedPassRecord["conditions"][number] & Sourced;
 export type DraftReferral = MedPassRecord["referrals"][number] & Sourced;
@@ -221,6 +223,80 @@ export function mergeDrafts(papers: (ExtractedDraft | null)[]): { draft: Extract
 }
 
 // ---------------------------------------------------------------------------
+// Zod schema for a REVIEWED draft coming back from the browser on save.
+// Limits keep a broken or hostile request from storing huge data.
+// ---------------------------------------------------------------------------
+
+const text = (max = 300) => z.string().trim().max(max);
+const sourcePaper = z.number().int().min(0).max(3); // 0 = added by hand during review
+const verified = z.enum(["patient", "clinician"]);
+
+export const reviewedDraftSchema = z.object({
+  patient: z.object({
+    name: text(120).min(1),
+    dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    sex: z.enum(["F", "M"]).optional(),
+    bloodType: z.enum(["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]).optional(),
+    ageWritten: text(20).optional(),
+  }),
+  emergency: z.object({
+    allergies: z.array(z.object({ name: text(120).min(1), sourcePaper })).max(30),
+    critical: z.array(z.object({ name: text(120).min(1), sourcePaper })).max(30),
+  }),
+  conditions: z.array(z.object({ name: text(120).min(1), verified, sourcePaper })).max(50),
+  meds: z
+    .array(
+      z.object({
+        raw: text(500).optional(),
+        name: text(120).min(1),
+        ingredient: text(200).optional(),
+        strength: text(60).optional(),
+        frequency: text(120).optional(),
+        drugId: text(60).optional(),
+        status,
+        verified,
+        sourcePaper,
+        note: text(200).optional(),
+      }),
+    )
+    .max(50),
+  referrals: z
+    .array(z.object({ to: text(120).min(1), reason: text(300).optional(), status: z.enum(["open", "done"]), sourcePaper }))
+    .max(30),
+  visits: z.array(z.object({ date: text(10), place: text(120), note: text(300) })).max(50),
+  updated: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+
+// Compile-time check: a reviewed draft is a valid ExtractedDraft.
+const _reviewedMatchesType: (d: z.infer<typeof reviewedDraftSchema>) => ExtractedDraft = (d) => d;
+void _reviewedMatchesType;
+
+// Save is only allowed once a human resolved every yellow / unreadable med.
+export const unresolvedMeds = (draft: ExtractedDraft) => draft.meds.filter((m) => m.status !== "green").length;
+
+// ---------------------------------------------------------------------------
+// Matching against the MoPH list (public/drugs.json)
+// ---------------------------------------------------------------------------
+
+export const NOT_IN_MOPH_LIST = "Not found in the MoPH list, please check";
+
+// For every readable med: a sure ("high") match fills drugId and the MoPH
+// ingredient; no match or an unsure ("low") one turns the med yellow so a human
+// checks it. Unreadable meds are left alone: the review screen offers
+// "Did you mean...?" and a human picks. Returns a new draft (pure).
+export function applyMatches(draft: ExtractedDraft, matchMed: (med: Med) => MedMatch | null): ExtractedDraft {
+  return {
+    ...draft,
+    meds: draft.meds.map((med) => {
+      if (med.status === "unreadable") return { ...med };
+      const m = matchMed(med);
+      if (!m || m.confidence === "low") return { ...med, status: "yellow", note: NOT_IN_MOPH_LIST };
+      return { ...med, drugId: m.drug.id, ingredient: m.drug.ingredient };
+    }),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Reviewed draft → MedPassRecord, ready to save. Strips sourcePaper, raw and
 // ageWritten. Exact duplicate allergies (case-insensitive) are listed once here.
 // ---------------------------------------------------------------------------
@@ -241,9 +317,10 @@ export function draftToRecord(
       critical: draft.emergency.critical.map((c) => c.name),
     },
     conditions: draft.conditions.map(({ name, verified }) => ({ name, verified })),
-    meds: draft.meds.map(({ sourcePaper: _s, raw: _r, ...m }) => {
+    meds: draft.meds.map(({ sourcePaper: _s, raw: _r, note: _n, ...m }) => {
       void _s;
       void _r;
+      void _n;
       return m;
     }),
     referrals: draft.referrals.map(({ sourcePaper: _s, ...r }) => {

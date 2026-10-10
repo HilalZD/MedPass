@@ -1,6 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
-import { SYSTEM_PROMPT, mergeDrafts, parsePaper, tagPaper, type ExtractedDraft } from "@/lib/extract";
+import { requireClinician } from "@/lib/db/auth";
+import { getMatcher } from "@/lib/db/drugs";
+import { SYSTEM_PROMPT, applyMatches, mergeDrafts, parsePaper, tagPaper, type ExtractedDraft } from "@/lib/extract";
 
 // Each paper is read in its own AI call, all at the same time, so the total
 // time is about the time of the slowest paper. Give the function 2 minutes on Vercel.
@@ -80,6 +82,10 @@ async function readPaper(client: Anthropic, image: string, n: number, today: str
 }
 
 export async function POST(request: Request) {
+  // Only logged-in clinicians may use the AI (it costs money per call).
+  const clinician = await requireClinician();
+  if (clinician instanceof Response) return clinician;
+
   if (!process.env.ANTHROPIC_API_KEY) {
     return errorResponse("The server is missing its AI key. Tell the MedPass team.", 500);
   }
@@ -105,7 +111,18 @@ export async function POST(request: Request) {
   }
 
   const failedPapers = results.flatMap((r, i) => (r.ok ? [] : [i + 1]));
-  const { draft, warnings } = mergeDrafts(results.map((r) => (r.ok ? r.draft : null)));
+  const merged = mergeDrafts(results.map((r) => (r.ok ? r.draft : null)));
+
+  // Check every readable med against the MoPH list. If the list cannot be
+  // loaded, treat every med as "not found" (yellow), never as fine.
+  let matchMed: Parameters<typeof applyMatches>[1] = () => null;
+  try {
+    matchMed = (await getMatcher()).matchMed;
+  } catch {
+    console.error("extract: could not load drugs.json");
+  }
+  const draft = applyMatches(merged.draft, matchMed);
+  const warnings = merged.warnings;
 
   return Response.json({
     record: draft,

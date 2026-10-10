@@ -10,7 +10,9 @@ MedPass is HYBRID:
 - OFFLINE: a printed ID card whose QR contains an encrypted snapshot of the essentials, readable with the patient's 6-digit PIN, with no internet. If the servers go down, the card still works.
 
 ## The card
-Front: name, date of birth, blood type, MedPass ID, QR. Back: emergency info (allergies, critical conditions) as readable text in Arabic + English. Optional photo, printed only, never inside the QR. NO national ID number anywhere.
+FRONT: name, date of birth, blood type, MedPass ID, allergies + critical conditions as readable text in Arabic and English.
+BACK: QR, card version, "Scan with MedPass. Emergency info works offline."
+Optional photo, printed only, never inside the QR. NO national ID number anywhere.
 QR payload: version prefix + MedPass ID + cardVersion + emergency section (plaintext) + snapshot of the record (raw fields stripped, compressed, AES-GCM encrypted, key from PIN via PBKDF2). Target under ~800 characters.
 
 ## Flows
