@@ -1,0 +1,93 @@
+﻿brand,ingredient,verified,source,note
+Glucophage,metformin,no,,"XR = prolonged release | matches: GLUCOPHAGE [1000mg, 850mg]; GLUCOPHAGE XR [1000mg, 500mg, 750mg]"
+Concor,bisoprolol,no,,"matches: CONCOR [10mg, 5mg]; CONCOR COR [2.5mg]"
+Concor AM,bisoprolol + amlodipine,no,,matches: CONCOR AM 2.5 [2.5mg]; CONCOR AM 5 [5mg]
+Concor Plus,bisoprolol + hydrochlorothiazide,no,,matches: CONCOR PLUS [?]
+Concor T,,no,,combination not verified: ingredient left empty on purpose (stops the shorter brand row from matching) | matches: CONCOR T 2.5 [?]; CONCOR T 5 [?]
+Lipitor,atorvastatin,no,,NOT in the MoPH price list (0 rows). Atorvastatin is sold as the brands below; use one of them for the demo | matches: NO MATCH in drugs.json
+Apo-Atorvastatin,atorvastatin,no,,"matches: APO-ATORVASTATIN [10mg, 20mg, 40mg]"
+Atorvastatin Pharmadex,atorvastatin,no,,matches: ATORVASTATIN PHARMADEX [20mg]
+Atorvastatine Arrow,atorvastatin,no,,"covers both spellings GENERIQUES / GENERQUES | matches: ATORVASTATINE ARROW GENERIQUES [10mg, 20mg, 80mg]; ATORVASTATINE ARROW GENERQUES [40mg]"
+Aspirin Protect,acetylsalicylic acid,no,,"low-dose: 100 mg. No 75 mg product in the list; 81 mg = Aspicot, Aspi-Cor, Asprothin | matches: ASPIRIN PROTECT [100mg]"
+Aspicot,acetylsalicylic acid,no,,"low-dose 81 mg and 100 mg | matches: ASPICOT [100mg, 81mg]"
+Aspi-Cor,acetylsalicylic acid,no,,low-dose 81 mg | matches: ASPI-COR [81mg]
+Asprothin,acetylsalicylic acid,no,,low-dose 81 mg | matches: ASPROTHIN [81mg]
+Aspiphar,acetylsalicylic acid,no,,low-dose 100 mg | matches: ASPIPHAR [100mg]
+Aspirine,acetylsalicylic acid,no,,"0.3 g = 300 mg, NOT low-dose | matches: ASPIRINE [0.3g]"
+Aspirine C,acetylsalicylic acid + ascorbic acid,no,,matches: ASPIRINE C EFFERVESCENT [?]
+Amlor,amlodipine,no,,matches: AMLOR [5mg]
+Lantus,insulin glargine,no,,product strength 100 IU/ml; the 18 IU on the paper is the patient's DOSE | matches: LANTUS [100IU/ml]; LANTUS SOLOSTAR [100IU/ml]
+Coversyl,perindopril,no,,"only COVERSYL ARGININE (perindopril arginine) exists in the list | matches: COVERSYL ARGININE [10mg, 5mg]"
+Panadol,paracetamol,no,,matches: PANADOL ACTIFAST [500mg]; PANADOL ADVANCE [500mg]; PANADOL B&I [120mg/5ml]; PANADOL JOINT [665mg]
+Panadol Extra,paracetamol + caffeine,no,,matches: PANADOL EXTRA WITH OPTIZORB [?]
+Panadol Cold,,no,,combination not verified: ingredient left empty on purpose (stops the shorter brand row from matching) | matches: PANADOL COLD & FLU ALL IN ONE [?]; PANADOL COLD & FLU DAY [?]; PANADOL COLD & FLU VAPOUR RELEASE + DECONGESTANT [?]; PANADOL COLD AND FLU [?]
+Panadol Night,,no,,combination not verified: ingredient left empty on purpose (stops the shorter brand row from matching) | matches: PANADOL NIGHT [?]
+Panadol Sinus,,no,,combination not verified: ingredient left empty on purpose (stops the shorter brand row from matching) | matches: PANADOL SINUS [500mg]
+Panadol Migraine,,no,,combination not verified: ingredient left empty on purpose (stops the shorter brand row from matching) | matches: PANADOL MIGRAINE [?]
+Panadol Woman,,no,,combination not verified: ingredient left empty on purpose (stops the shorter brand row from matching) | matches: PANADOL WOMAN [?]
+Diamicron,gliclazide,no,,matches: DIAMICRON MR [60mg]
+Amaryl,glimepiride,no,,"matches: AMARYL [1mg, 2mg, 3mg, 4mg]"
+Januvia,sitagliptin,no,,matches: JANUVIA [100mg]
+Janumet,sitagliptin + metformin,no,,"matches: JANUMET [50mg/1000mg, 50mg/500mg]; JANUMET XR [100mg/1,000mg, 50mg/1,000mg, 50mg/500mg]"
+Galvus,vildagliptin,no,,matches: GALVUS [50mg]
+Galvus Met,vildagliptin + metformin,no,,"matches: GALVUS MET [50mg/1000mg, 50mg/850mg]"
+Jardiance,empagliflozin,no,,"matches: JARDIANCE [10mg, 25mg]"
+Synjardy,empagliflozin + metformin,no,,"matches: SYNJARDY [12.5mg/1000mg, 12.5mg/850mg, 5mg/1000mg, 5mg/850mg]"
+Forxiga,dapagliflozin,no,,matches: FORXIGA [10mg]
+Xigduo,dapagliflozin + metformin,no,,"matches: XIGDUO XR [10mg/1000mg, 5mg/1000mg]"
+Trajenta,linagliptin,no,,matches: TRAJENTA [5mg]
+NovoRapid,insulin aspart,no,,matches: NOVORAPID FLEXPEN [100U/ml]
+Humalog,insulin lispro,no,,matches: HUMALOG [100IU/ml]; HUMALOG KWIKPEN [100IU/ml]
+Humalog Mix,,no,,combination not verified: ingredient left empty on purpose (stops the shorter brand row from matching); premixed lispro/lispro protamine is not interchangeable with plain Humalog | matches: HUMALOG MIX 25 KWIKPEN [100IU/ml]; HUMALOG MIX 50 KWIKPEN [100IU/ml]
+Toujeo,insulin glargine,no,,300 U/ml: NOT unit-for-unit interchangeable with Lantus 100 U/ml | matches: TOUJEO [300Units/ml]
+Ozempic,semaglutide,no,,"matches: OZEMPIC [0.25mg, 0.5mg, 1mg]"
+Diovan,valsartan,no,,"matches: DIOVAN [160mg, 80mg]"
+Co-Diovan,valsartan + hydrochlorothiazide,no,,"matches: CO-DIOVAN [160/12.5 mg, 160/25 mg, 80/12.5 mg]"
+Exforge,amlodipine + valsartan,no,,"matches: EXFORGE [10/160mg, 5/160mg]"
+Exforge HCT,amlodipine + valsartan + hydrochlorothiazide,no,,"matches: EXFORGE HCT [10/160/12.5 mg, 10/160/25 mg, 5/160/12.5 mg, 5/160/25 mg]"
+Cozaar,losartan,no,,"matches: COZAAR [100mg, 50mg]"
+Hyzaar,losartan + hydrochlorothiazide,no,,matches: HYZAAR [100/12.5mg]
+Aprovel,irbesartan,no,,"matches: APROVEL [150mg, 300mg]"
+Co Aprovel,irbesartan + hydrochlorothiazide,no,,"matches: CO APROVEL [150mg/12.5mg, 300mg/12.5mg]"
+Micardis,telmisartan,no,,"matches: MICARDIS [40mg, 80mg]"
+Micardis Plus,telmisartan + hydrochlorothiazide,no,,matches: MICARDIS PLUS [80mg/12.5mg]
+Atacand,candesartan,no,,"matches: ATACAND [16mg, 8mg]"
+Atacand Plus,candesartan + hydrochlorothiazide,no,,matches: ATACAND PLUS [16mg/12.5mg]
+Tritace,ramipril,no,,"matches: TRITACE [10mg, 2.5mg, 5mg]"
+Lasix,furosemide,no,,"matches: LASIX [40mg, 500mg]"
+Aldactone,spironolactone,no,,"matches: ALDACTONE [100mg, 25mg]"
+Tenormin,atenolol,no,,"matches: TENORMIN [100mg, 50mg]"
+Nebilet,nebivolol,no,,matches: NEBILET [5mg]
+Nebilet Plus,nebivolol + hydrochlorothiazide,no,,"matches: NEBILET PLUS [5mg/12.5mg, 5mg/25mg]"
+Dilatrend,carvedilol,no,,"matches: DILATREND [25mg, 6.25mg]"
+Entresto,sacubitril + valsartan,no,,"matches: ENTRESTO [100mg, 200mg, 50mg]"
+Crestor,rosuvastatin,no,,"matches: CRESTOR [10mg, 20mg, 40mg, 5mg]"
+Ezetrol,ezetimibe,no,,matches: EZETROL [10mg]
+Plavix,clopidogrel,no,,matches: PLAVIX [?]
+Xarelto,rivaroxaban,no,,"matches: XARELTO [10mg, 15mg, 2.5mg, 20mg]"
+Eliquis,apixaban,no,,"matches: ELIQUIS [2.5mg, 5mg]"
+Pradaxa,dabigatran etexilate,no,,"matches: PRADAXA [110mg, 150mg]"
+Lanoxin,digoxin,no,,matches: LANOXIN [0.25mg]; LANOXIN PG [0.05mg/ml]
+Cordarone,amiodarone,no,,"matches: CORDARONE [200mg, ?]"
+Sintrom,acenocoumarol,no,,matches: SINTROM [4mg]
+Euthyrox,levothyroxine,no,,"matches: EUTHYROX [100mcg, 150mcg, 25mcg, 50mcg]"
+Thyrozol,thiamazole,no,,"thiamazole = methimazole | matches: THYROZOL [10mg, 5mg]"
+Ventolin,salbutamol,no,,matches: VENTOLIN [5mg/ml]; VENTOLIN EVOHALER [100mcg]
+Seretide,fluticasone + salmeterol,no,,matches: SERETIDE DISKUS 100 [50/100mcg]; SERETIDE DISKUS 250 [50/250mcg]; SERETIDE DISKUS 500 [50/500mcg]
+Symbicort,budesonide + formoterol,no,,"matches: SYMBICORT [160/4.5mcg, 320/9mcg]; SYMBICORT TURBUHALER [160/4.5mcg/dose]"
+Singulair,montelukast,no,,matches: SINGULAIR [10mg]; SINGULAIR (PEDIATRIC) [5mg]; SINGULAIR PEDIATRIC [4mg]
+Pulmicort,budesonide,no,,matches: PULMICORT [0.5mg/ml]
+Flixotide,fluticasone,no,,"matches: FLIXOTIDE EVOHALER [125mcg, 250mcg, 50mcg]"
+Tegretol,carbamazepine,no,,matches: TEGRETOL [2%]
+Lamictal,lamotrigine,no,,"matches: LAMICTAL [100mg, 25mg, 50mg]; LAMICTAL LIQUI-TABS [5mg]"
+Keppra,levetiracetam,no,,"matches: KEPPRA [1000mg, 250mg, 500mg]"
+Depakine,valproic acid,no,,"contains sodium valproate (Chrono: + valproic acid); recorded under the INN valproic acid - check | matches: DEPAKINE [200mg, 400mg/4ml, 500mg, ?]; DEPAKINE CHRONO [500mg]"
+Nexium,esomeprazole,no,,"matches: NEXIUM [10mg, 20mg, 40mg]; NEXIUM IV [40mg]"
+Pariet,rabeprazole,no,,matches: PARIET [20mg]
+oxaliplatine,oxaliplatin,no,,alias
+cisplatine,cisplatin,no,,alias
+epirubicine,epirubicin,no,,alias
+daunorubicine,daunorubicin,no,,alias
+bleomycine,bleomycin,no,,alias
+anastrazole,anastrozole,no,,alias
+erythropoetin,erythropoietin,no,,alias
