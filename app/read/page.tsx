@@ -61,7 +61,7 @@ const T = {
     seen: "الحروف التي استطعنا رؤيتها",
     schedule: "يومك",
     medicine: "الدواء",
-    times: (n: number) => `${n === 1 ? "مرة واحدة" : n === 2 ? "مرتان" : `${n} مرات`} في اليوم. الأوقات غير مكتوبة: اسأل الصيدلي.`,
+    times: (n: number) => `${n === 1 ? "مرة واحدة" : n === 2 ? "مرتان" : `\u2068${n}\u2069 مرات`} في اليوم. الأوقات غير مكتوبة: اسأل الصيدلي.`,
     readAloud: "اقرأ بصوت عالٍ",
     stop: "إيقاف",
     footer: "عندك أسئلة؟ اسأل الصيدلي. لم يتم حفظ أي صورة أو معلومات.",
@@ -141,7 +141,7 @@ export default function ReadPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col text-ink" dir={lang === "ar" ? "rtl" : "ltr"} lang={lang}>
+    <div className={`flex flex-1 flex-col text-ink ${lang === "ar" ? "ar-text" : ""}`} dir={lang === "ar" ? "rtl" : "ltr"} lang={lang}>
       <OfflineNotice />
       <header className="mx-auto flex w-full max-w-xl items-center justify-between gap-3 px-4 pt-4">
         <Logo />

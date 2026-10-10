@@ -6,6 +6,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import DrugInfo from "@/components/DrugInfo";
+import { Bi } from "@/components/Bi";
 import { NOT_IN_MOPH_LIST } from "@/lib/extract";
 import { createMatcher, type Matcher } from "@/lib/match";
 import type { Med, MedPassRecord, Verified } from "@/lib/types";
@@ -229,9 +230,7 @@ export default function RecordEditor({
           {error && <ErrorBox>{error}</ErrorBox>}
           {savedMsg && <p className="text-center text-lg font-semibold text-brand-dark">{savedMsg}</p>}
           {!identityOk && (
-            <p className="text-center text-lg font-semibold text-red-800">
-              Fix the patient details above first. <span lang="ar">صحّح بيانات المريض أولاً.</span>
-            </p>
+            <Bi as="p" center en="Fix the patient details above first." ar="صحّح بيانات المريض أولاً." className="text-lg font-semibold text-red-800" />
           )}
           {unresolved > 0 && (
             <p className="text-center text-lg font-semibold text-yellow-800">
@@ -353,7 +352,7 @@ const FIELDS: { key: PatientField; label: string }[] = [
 ];
 
 function show(key: PatientField, value: string | undefined): string {
-  if (!value) return key === "bloodType" ? "Unknown · غير معروف" : "(empty)";
+  if (!value) return key === "bloodType" ? "Unknown" : "(empty)"; // portal UI is English; one language per element
   if (key === "sex") return value === "F" ? "Female" : "Male";
   return value;
 }

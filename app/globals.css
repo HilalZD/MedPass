@@ -40,3 +40,18 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans);
 }
+
+/* Arabic next to English (components/Bi.tsx). IBM Plex Sans Arabic's letters
+   look smaller than Latin at the same font size, so Arabic is sized up a little
+   (relative to the size of its pair) to look visually equal, with a bit more line
+   height for the dots and marks. In the components layer, so an explicit Tailwind
+   size on the Arabic line itself still wins. */
+@layer components {
+  .ar-text {
+    font-size: 1.1em;
+    line-height: 1.6;
+  }
+  .ar-text .ar-text {
+    font-size: 1em;
+  }
+}

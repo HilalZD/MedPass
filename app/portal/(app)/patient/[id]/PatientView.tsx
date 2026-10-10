@@ -6,6 +6,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { Bi } from "@/components/Bi";
 import type { MedPassRecord } from "@/lib/types";
 import { btn, ErrorBox, input, networkErrorMessage, portalFetch } from "../../new/ui";
 import RecordEditor from "./RecordEditor";
@@ -181,12 +182,9 @@ export function PinGate({
         {id}
       </p>
       {notice && (
-        <p role="status" className="rounded-xl border-2 border-amber-400 bg-amber-50 p-3 text-lg text-amber-950">
-          {notice}
-          <span lang="ar" dir="rtl" className="block">
-            انتهت مدة فتح الملف (١٥ دقيقة). اطلب من المريض إدخال رمزه السري مرة أخرى.
-          </span>
-        </p>
+        <div role="status" className="rounded-xl border-2 border-amber-400 bg-amber-50 p-3 text-lg text-amber-950">
+          <Bi en={notice} ar="انتهت مدة فتح الملف (١٥ دقيقة). اطلب من المريض إدخال رمزه السري مرة أخرى." className="gap-1" />
+        </div>
       )}
       <p className="text-lg text-gray-700">{note}</p>
       <input

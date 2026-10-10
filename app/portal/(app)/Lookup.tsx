@@ -7,6 +7,7 @@
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
+import { Bi } from "@/components/Bi";
 import { readEmergency } from "@/lib/card";
 import { btn, input } from "./new/ui";
 
@@ -44,7 +45,7 @@ export default function Lookup() {
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-xl font-semibold">Open a patient · فتح ملف مريض</h2>
+      <Bi as="h2" en="Open a patient" ar="فتح ملف مريض" className="text-xl font-semibold" />
       <form onSubmit={open} className="flex gap-2">
         <input
           className={`${input} font-mono uppercase`}

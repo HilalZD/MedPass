@@ -1,10 +1,11 @@
-// Homepage: what MedPass is, in English and Arabic, and the three ways in.
+// Homepage: what MedPass is, in English and Arabic, and the four ways in.
 // Phone first: one column, big buttons; wider screens just get more air.
+// English and Arabic are always separate elements (components/Bi.tsx).
 
 import Link from "next/link";
-import { Logo } from "@/components/Brand";
+import { Bi } from "@/components/Bi";
+import { CedarMark, Logo } from "@/components/Brand";
 import OfflineNotice from "@/components/OfflineNotice";
-import { Cedar } from "@/components/MedPassCard";
 
 const doors = [
   {
@@ -37,85 +38,78 @@ export default function Home() {
   return (
     <div className="flex flex-1 flex-col">
       <OfflineNotice />
-      <header className="mx-auto flex w-full max-w-3xl items-center justify-between px-5 pt-5">
+      <header className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-5 pt-5">
         <Logo />
-        <span lang="ar" dir="rtl" className="text-lg font-bold text-ink">
+        <span lang="ar" dir="rtl" className="ar-text text-lg font-bold text-ink">
           بطاقة ميدباس الطبية
         </span>
       </header>
 
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-10 px-5 py-8">
-        <section className="relative flex flex-col gap-4 overflow-hidden">
-          <div className="pointer-events-none absolute -end-10 -top-6 opacity-[0.06]" aria-hidden="true">
-            <Cedar size="16rem" color="#2b8a6e" />
+        {/* Hero: centred, English on top, Arabic directly under it. */}
+        <section className="relative flex flex-col items-center gap-5 overflow-hidden py-2 text-center">
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.07]" aria-hidden="true">
+            <CedarMark height="18rem" />
           </div>
-          <h1 className="text-4xl font-bold leading-tight text-ink sm:text-5xl">Your medical record, around your neck.</h1>
-          <p lang="ar" dir="rtl" className="text-3xl font-bold leading-snug text-brand-dark sm:text-4xl">
-            سجلّك الطبي، معك أينما كنت.
-          </p>
-          <p className="max-w-xl text-xl leading-relaxed text-muted">
-            MedPass is a medical ID card for Lebanon. Hospitals update it online; in a crisis it works offline, with no
-            internet.
-          </p>
-          <p lang="ar" dir="rtl" className="max-w-xl text-xl leading-relaxed text-muted">
-            ميدباس بطاقة طبية للبنان. تحدّثها المستشفيات عبر الإنترنت، وفي الأزمات تعمل بدون إنترنت.
-          </p>
+          <Bi
+            as="h1"
+            center
+            className="relative gap-2 text-4xl font-bold sm:text-5xl"
+            enClassName="leading-tight text-balance text-ink"
+            arClassName="leading-snug text-balance text-brand-dark"
+            en="Your medical record in one scan, wherever you are."
+            ar="سجلّك الطبي بمسحة واحدة، أينما كنت."
+          />
+          <Bi
+            as="div"
+            center
+            className="relative max-w-xl gap-2 text-xl text-muted"
+            enClassName="leading-relaxed text-pretty"
+            arClassName="text-pretty"
+            en="MedPass is a medical ID card for Lebanon. Hospitals update it online; in a crisis it works offline, with no internet."
+            ar="ميدباس بطاقة طبية للبنان. تحدّثها المستشفيات عبر الإنترنت، وفي الأزمات تعمل بدون إنترنت."
+          />
         </section>
 
+        {/* Buttons with both languages: English and Arabic on two lines, centred. */}
         <nav className="grid gap-3 sm:grid-cols-2" aria-label="Start">
           {doors.map((d) => (
             <Link
               key={d.href}
               href={d.href}
-              className={`flex min-h-24 flex-col justify-center gap-1 rounded-2xl border-2 px-5 py-4 transition-colors ${
-                d.primary
-                  ? "border-brand bg-brand text-white hover:bg-brand-dark"
-                  : "border-line bg-white text-ink hover:border-brand"
+              className={`flex min-h-28 flex-col items-center justify-center gap-2 rounded-2xl border-2 px-5 py-4 transition-colors ${
+                d.primary ? "border-brand bg-brand text-white hover:bg-brand-dark" : "border-line bg-white text-ink hover:border-brand"
               }`}
             >
-              <span className="flex items-baseline justify-between gap-2 text-xl font-bold">
-                <span>{d.en}</span>
-                <span lang="ar" dir="rtl">
-                  {d.ar}
-                </span>
-              </span>
-              <span className={`flex justify-between gap-2 text-base ${d.primary ? "text-white/85" : "text-muted"}`}>
-                <span>{d.hint}</span>
-                <span lang="ar" dir="rtl">
-                  {d.hintAr}
-                </span>
-              </span>
+              <Bi center en={d.en} ar={d.ar} className="text-xl font-bold" />
+              <Bi center en={d.hint} ar={d.hintAr} className={`text-base ${d.primary ? "text-white/85" : "text-muted"}`} />
             </Link>
           ))}
         </nav>
 
         <section className="flex flex-col gap-3" aria-label="How it works">
-          <h2 className="text-lg font-semibold text-muted">
-            How it works · <span lang="ar">كيف تعمل</span>
-          </h2>
+          <Bi as="h2" center en="How it works" ar="كيف تعمل" className="text-lg font-semibold text-muted" />
           <ol className="grid gap-3 sm:grid-cols-3">
             {steps.map((s, i) => (
-              <li key={i} className="flex gap-3 rounded-2xl border-2 border-line bg-white p-4">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand text-lg font-bold text-white">
+              <li key={i} className="flex flex-col gap-3 rounded-2xl border-2 border-line bg-white p-4">
+                <span className="flex h-9 w-9 items-center justify-center self-center rounded-full bg-brand text-lg font-bold text-white">
                   {i + 1}
                 </span>
-                <span className="flex flex-col gap-1">
-                  <span className="text-lg font-semibold text-ink">{s.en}</span>
-                  <span lang="ar" dir="rtl" className="text-base text-muted">
-                    {s.ar}
-                  </span>
-                </span>
+                {/* Cards: English left-aligned, Arabic right-aligned, stacked. */}
+                <Bi en={s.en} ar={s.ar} className="gap-1 text-lg" enClassName="font-semibold text-ink" arClassName="text-muted" />
               </li>
             ))}
           </ol>
         </section>
       </main>
 
-      <footer className="mx-auto flex w-full max-w-3xl flex-wrap items-center justify-between gap-3 border-t-2 border-line px-5 py-5 text-base text-muted">
+      <footer className="mx-auto flex w-full max-w-3xl flex-col items-center gap-2 border-t-2 border-line px-5 py-5 text-center text-base text-muted">
         <Link href="/privacy" className="inline-flex min-h-11 items-center font-semibold text-brand-dark underline underline-offset-4">
-          Privacy &amp; safety · <span lang="ar">الخصوصية والأمان</span>
+          <Bi center en="Privacy & safety" ar="الخصوصية والأمان" />
         </Link>
-        <span>Prototype · Hack for Health Lebanon 2026</span>
+        <span lang="en" dir="ltr">
+          Prototype · Hack for Health Lebanon 2026
+        </span>
       </footer>
     </div>
   );

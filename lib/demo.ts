@@ -13,3 +13,11 @@ export const DEMO_PATIENT = {
   pin: "123456",
   name: "Fatima Haidar",
 };
+
+// Hilal's own card, shown on /me in demo mode at Hilal's request (2026-10-10)
+// so judges can open it. Real person: remove this hint when demo mode ends.
+export const DEMO_OWN_CARD = {
+  id: "MP-7K3Q-92XD",
+  pin: "246810",
+  name: "Hilal Zeidan",
+};

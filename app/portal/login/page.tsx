@@ -4,7 +4,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Cedar } from "@/components/MedPassCard";
+import { CedarMark } from "@/components/Brand";
+import { Bi } from "@/components/Bi";
 import OfflineNotice, { OFFLINE_EN } from "@/components/OfflineNotice";
 import { DEMO_MODE } from "@/lib/demo";
 
@@ -53,19 +54,14 @@ export default function LoginPage() {
     <OfflineNotice />
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 p-6">
       <div className="flex flex-col items-center text-center">
-        <Cedar size="3.5rem" color="#2b8a6e" />
-        <h1 className="mt-2 text-3xl font-bold text-ink">MedPass Portal</h1>
-        <p className="mt-1 text-lg text-muted">For approved clinicians</p>
-        <p className="text-lg text-muted" dir="rtl" lang="ar">
-          للعاملين الصحيين المعتمدين
-        </p>
+        <CedarMark height="4.5rem" />
+        <Bi as="h1" center en="MedPass Portal" ar="بوابة ميدباس" className="mt-2 text-3xl font-bold text-ink" />
+        <Bi as="p" center en="For approved clinicians" ar="للعاملين الصحيين المعتمدين" className="mt-1 text-lg text-muted" />
       </div>
 
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
         <label className="flex flex-col gap-1 text-lg font-medium">
-          <span>
-            Email · <span lang="ar">البريد الإلكتروني</span>
-          </span>
+          <Bi en="Email" ar="البريد الإلكتروني" />
           <input
             type="email"
             autoComplete="username"
@@ -78,9 +74,7 @@ export default function LoginPage() {
         </label>
 
         <label className="flex flex-col gap-1 text-lg font-medium">
-          <span>
-            Password · <span lang="ar">كلمة المرور</span>
-          </span>
+          <Bi en="Password" ar="كلمة المرور" />
           <input
             type="password"
             autoComplete="current-password"
@@ -103,7 +97,7 @@ export default function LoginPage() {
           disabled={loading}
           className="min-h-14 rounded-2xl bg-brand p-4 text-xl font-semibold text-white hover:bg-brand-dark disabled:opacity-60"
         >
-          {loading ? "Logging in…" : "Log in · تسجيل الدخول"}
+          {loading ? <span lang="en" dir="ltr">Logging in…</span> : <Bi center en="Log in" ar="تسجيل الدخول" />}
         </button>
       </form>
 

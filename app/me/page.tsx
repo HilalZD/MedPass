@@ -5,6 +5,7 @@
 // The session is a 10-minute httpOnly cookie; this page never sees the PIN after sending it.
 
 import { useCallback, useEffect, useState } from "react";
+import { Bi } from "@/components/Bi";
 import { Logo } from "@/components/Brand";
 import DemoHint from "@/components/DemoHint";
 import OfflineNotice, { OFFLINE_EN } from "@/components/OfflineNotice";
@@ -45,10 +46,8 @@ export default function MePage() {
     <OfflineNotice />
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 p-4">
       <header className="flex flex-col items-center gap-2 pt-2 text-center">
-        <Logo subtitle="My record · ملفي" />
-        <h1 className="text-xl font-semibold">
-          My medical record · <span lang="ar">ملفي الطبي</span>
-        </h1>
+        <Logo subtitle="My record" />
+        <Bi as="h1" center en="My medical record" ar="ملفي الطبي" className="text-xl font-semibold" />
       </header>
 
       {checking ? <p className="text-center text-lg">…</p> : data ? <Record data={data} onLock={lock} /> : <Login expired={expired} onOpen={(d) => { setExpired(false); setData(d); }} />}
@@ -94,28 +93,21 @@ function Login({ onOpen, expired }: { onOpen: (d: Payload) => void; expired: boo
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-5">
-      <p className="text-center text-lg text-gray-700">
-        See your record and who opened it.
-        <br />
-        <span lang="ar" dir="rtl">
-          شاهد ملفك ومن فتحه.
-        </span>
-      </p>
+      <Bi as="p" center en="See your record and who opened it." ar="شاهد ملفك ومن فتحه." className="text-lg text-gray-700" />
 
       {expired && (
-        <p role="status" className="rounded-2xl border-2 border-amber-400 bg-amber-50 p-4 text-lg text-amber-950">
-          Your 10 minutes are up, so your record was locked. Enter your ID and PIN again to see it.
-          <span lang="ar" dir="rtl" className="block">
-            انتهت الدقائق العشر وتم قفل ملفك. أدخل رقمك ورمزك السري مرة أخرى.
-          </span>
-        </p>
+        <div role="status" className="rounded-2xl border-2 border-amber-400 bg-amber-50 p-4 text-lg text-amber-950">
+          <Bi
+            en="Your 10 minutes are up, so your record was locked. Enter your ID and PIN again to see it."
+            ar="انتهت الدقائق العشر وتم قفل ملفك. أدخل رقمك ورمزك السري مرة أخرى."
+            className="gap-1"
+          />
+        </div>
       )}
-      <DemoHint />
+      <DemoHint card="own" />
 
       <label className="flex flex-col gap-2 text-lg font-medium">
-        <span>
-          Your MedPass ID · <span lang="ar">رقم ميدباس</span>
-        </span>
+        <Bi en="Your MedPass ID" ar="رقم ميدباس الخاص بك" />
         <input
           className={`${inputCls} font-mono uppercase`}
           dir="ltr"
@@ -129,9 +121,7 @@ function Login({ onOpen, expired }: { onOpen: (d: Payload) => void; expired: boo
       </label>
 
       <label className="flex flex-col gap-2 text-lg font-medium">
-        <span>
-          Your 6-digit PIN · <span lang="ar">الرمز السري</span>
-        </span>
+        <Bi en="Your 6-digit PIN" ar="رمزك السري المؤلف من ٦ أرقام" />
         <input
           className={`${inputCls} text-center font-mono tracking-[0.5em]`}
           type="password"
@@ -151,7 +141,7 @@ function Login({ onOpen, expired }: { onOpen: (d: Payload) => void; expired: boo
       )}
 
       <button className={btnPrimary} disabled={busy || !id.trim() || pin.length !== 6}>
-        {busy ? "Checking…" : "Open my record · افتح ملفي"}
+        {busy ? <span lang="en" dir="ltr">Checking…</span> : <Bi center en="Open my record" ar="افتح ملفي" />}
       </button>
     </form>
   );
@@ -172,20 +162,20 @@ function Record({ data, onLock }: { data: Payload; onLock: (why?: "expired") => 
           {p.name}
         </p>
         {p.nameAr && (
-          <p className="text-2xl font-bold" dir="rtl" lang="ar">
+          <p className="ar-text text-2xl font-bold text-start" dir="rtl" lang="ar">
             {p.nameAr}
           </p>
         )}
         <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-lg">
           <Item label="Date of birth" value={p.dateOfBirth} />
-          <Item label="Blood type" value={p.bloodType || "Unknown · غير معروف"} />
+          <Item label="Blood type" value={p.bloodType || <Bi en="Unknown" ar="غير معروف" />} />
           <Item label="MedPass ID" value={r.id} mono />
           <Item label="Current card" value={`Card ${data.cardVersion}`} />
         </dl>
       </section>
 
       <section className="flex flex-col gap-2 rounded-2xl border-2 border-red-300 bg-red-50 p-4">
-        <h2 className="text-xl font-semibold">Emergency info · معلومات الطوارئ</h2>
+        <Bi as="h2" en="Emergency info" ar="معلومات الطوارئ" className="text-xl font-semibold" />
         <p className="text-lg">
           <span className="text-gray-700">Allergies: </span>
           <span className="font-semibold">{r.emergency.allergies.join(", ") || "None recorded"}</span>
@@ -196,7 +186,7 @@ function Record({ data, onLock }: { data: Payload; onLock: (why?: "expired") => 
         </p>
       </section>
 
-      <Section title="Conditions · الأمراض" empty={r.conditions.length === 0}>
+      <Section title={<Bi en="Conditions" ar="الأمراض" />} empty={r.conditions.length === 0}>
         {r.conditions.map((c, i) => (
           <Row key={i}>
             <span>{c.name}</span>
@@ -205,7 +195,7 @@ function Record({ data, onLock }: { data: Payload; onLock: (why?: "expired") => 
         ))}
       </Section>
 
-      <Section title="Medicines · الأدوية" empty={r.meds.length === 0}>
+      <Section title={<Bi en="Medicines" ar="الأدوية" />} empty={r.meds.length === 0}>
         {r.meds.map((m, i) => (
           <Row key={i}>
             <span>
@@ -218,7 +208,7 @@ function Record({ data, onLock }: { data: Payload; onLock: (why?: "expired") => 
         ))}
       </Section>
 
-      <Section title="Open referrals · الإحالات" empty={openReferrals.length === 0}>
+      <Section title={<Bi en="Open referrals" ar="الإحالات المفتوحة" />} empty={openReferrals.length === 0}>
         {openReferrals.map((x, i) => (
           <Row key={i}>
             <span>
@@ -229,7 +219,7 @@ function Record({ data, onLock }: { data: Payload; onLock: (why?: "expired") => 
         ))}
       </Section>
 
-      <Section title="Visits · الزيارات" empty={visits.length === 0}>
+      <Section title={<Bi en="Visits" ar="الزيارات" />} empty={visits.length === 0}>
         {visits.map((v, i) => (
           <Row key={i}>
             <span>
@@ -243,18 +233,18 @@ function Record({ data, onLock }: { data: Payload; onLock: (why?: "expired") => 
         ))}
       </Section>
 
-      <p className="rounded-2xl bg-gray-100 p-4 text-center text-lg">
-        To change anything, visit any MedPass health facility.
-        <br />
-        <span lang="ar" dir="rtl">
-          لتغيير أي معلومة، زُر أي مركز صحي يعمل بنظام ميدباس.
-        </span>
-      </p>
+      <Bi
+        as="p"
+        center
+        en="To change anything, visit any MedPass health facility."
+        ar="لتغيير أي معلومة، زُر أي مركز صحي يعمل بنظام ميدباس."
+        className="gap-1 rounded-2xl bg-gray-100 p-4 text-lg"
+      />
 
       <AccessLog log={data.log} />
 
       <button className={btnSecondary} onClick={() => onLock()}>
-        🔒 Lock · قفل
+        <Bi center en="🔒 Lock" ar="قفل" />
       </button>
     </div>
   );
@@ -307,7 +297,7 @@ function AccessLog({ log }: { log: LogEntry[] }) {
   const wrong = log.filter((e) => e.action === "failed_pin").length;
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-xl font-semibold">Who opened my record · من فتح ملفي</h2>
+      <Bi as="h2" en="Who opened my record" ar="من فتح ملفي" className="text-xl font-semibold" />
       {wrong > 0 && (
         <p className="rounded-2xl border-2 border-amber-500 bg-amber-50 p-3 text-lg text-amber-900">
           {wrong} wrong PIN attempt{wrong === 1 ? "" : "s"}. If this was not you, keep your card safe and ask a MedPass
@@ -326,10 +316,7 @@ function AccessLog({ log }: { log: LogEntry[] }) {
               className={`flex flex-col gap-1 rounded-2xl border-2 p-3 text-lg ${isWrong ? "border-amber-500 bg-amber-50" : "border-gray-200"}`}
             >
               <span className="flex flex-wrap items-baseline justify-between gap-2">
-                <span className={`font-semibold ${isWrong ? "text-amber-900" : ""}`}>
-                  {isWrong && "⚠ "}
-                  {a.en} · <span lang="ar">{a.ar}</span>
-                </span>
+                <Bi en={`${isWrong ? "⚠ " : ""}${a.en}`} ar={a.ar} className={`font-semibold ${isWrong ? "text-amber-900" : ""}`} />
                 <span className="text-base text-gray-600" dir="ltr">
                   {new Date(e.at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}
                 </span>
@@ -346,7 +333,7 @@ function AccessLog({ log }: { log: LogEntry[] }) {
   );
 }
 
-function Item({ label, value, mono }: { label: string; value?: string; mono?: boolean }) {
+function Item({ label, value, mono }: { label: string; value?: React.ReactNode; mono?: boolean }) {
   return (
     <div>
       <dt className="text-base text-gray-600">{label}</dt>
@@ -357,7 +344,7 @@ function Item({ label, value, mono }: { label: string; value?: string; mono?: bo
   );
 }
 
-function Section({ title, empty, children }: { title: string; empty: boolean; children: React.ReactNode }) {
+function Section({ title, empty, children }: { title: React.ReactNode; empty: boolean; children: React.ReactNode }) {
   return (
     <section className="flex flex-col gap-2">
       <h2 className="text-xl font-semibold">{title}</h2>

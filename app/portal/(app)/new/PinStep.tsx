@@ -5,6 +5,7 @@
 // hash. The browser keeps it in memory until the card is printed.
 
 import { useMemo, useState } from "react";
+import { Bi } from "@/components/Bi";
 import { fitRecord } from "@/lib/card";
 import { draftToRecord, type ExtractedDraft } from "@/lib/extract";
 import type { MedPassRecord } from "@/lib/types";
@@ -86,10 +87,12 @@ export default function PinStep({
       {mismatch && <ErrorBox>The two PINs are not the same. Please type them again.</ErrorBox>}
 
       <div className="rounded-xl border-2 border-brand-100 bg-brand-50 p-4 text-lg">
-        <p>Remember this PIN. Nobody, not even the hospital, can recover it from your card.</p>
-        <p dir="rtl" lang="ar" className="mt-2">
-          احفظ هذا الرمز. لا أحد، ولا حتى المستشفى، يستطيع استرجاعه من بطاقتك.
-        </p>
+        <Bi
+          as="p"
+          className="gap-2"
+          en="Remember this PIN. Nobody, not even the hospital, can recover it from your card."
+          ar="احفظ هذا الرمز. لا أحد، ولا حتى المستشفى، يستطيع استرجاعه من بطاقتك."
+        />
       </div>
 
       {fit && <CardMeter fit={fit} />}

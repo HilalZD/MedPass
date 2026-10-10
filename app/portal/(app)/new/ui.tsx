@@ -3,6 +3,7 @@
 // Small shared pieces for the "New patient" screens.
 
 import { useEffect, useMemo, useState } from "react";
+import { Bi } from "@/components/Bi";
 import { loadDrugs, normalize, type DrugRow } from "@/lib/match";
 import type { Status } from "@/lib/types";
 
@@ -89,10 +90,13 @@ export function SessionWatcher() {
   if (!expired) return null;
   return (
     <div role="alert" className="sticky top-0 z-40 border-b-2 border-red-300 bg-red-50 px-4 py-3 text-center text-lg text-red-900">
-      <p className="font-semibold">Your login expired. Nothing on this page is lost.</p>
-      <p lang="ar" dir="rtl">
-        انتهت صلاحية تسجيل الدخول. لم يُفقد شيء من هذه الصفحة.
-      </p>
+      <Bi
+        as="div"
+        center
+        enClassName="font-semibold"
+        en="Your login expired. Nothing on this page is lost."
+        ar="انتهت صلاحية تسجيل الدخول. لم يُفقد شيء من هذه الصفحة."
+      />
       <div className="mt-2 flex flex-wrap justify-center gap-2">
         <a href="/portal/login" target="_blank" rel="noopener" className={btn.small}>
           Log in again (new tab)

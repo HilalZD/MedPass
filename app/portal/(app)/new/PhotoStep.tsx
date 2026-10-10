@@ -5,6 +5,7 @@
 // read and are never stored anywhere.
 
 import { useRef, useState } from "react";
+import { Bi } from "@/components/Bi";
 import type { ExtractedDraft } from "@/lib/extract";
 import { BLURRY_BELOW, photoSharpness, resizeImage } from "@/lib/image";
 import { networkErrorMessage, portalFetch, ErrorBox, btn } from "./ui";
@@ -166,9 +167,11 @@ export default function PhotoStep({
               <figcaption className="flex flex-col gap-1 text-base">
                 <span>Paper {i + 1}</span>
                 {blurry[src] && (
-                  <span className="rounded-lg bg-amber-100 px-2 py-1 text-sm text-amber-950">
-                    Looks blurry. Retake it in better light. <span lang="ar">الصورة غير واضحة. أعد التصوير بإضاءة أفضل.</span>
-                  </span>
+                  <Bi
+                    en="Looks blurry. Retake it in better light."
+                    ar="الصورة غير واضحة. أعد التصوير بإضاءة أفضل."
+                    className="rounded-lg bg-amber-100 px-2 py-1 text-sm text-amber-950"
+                  />
                 )}
                 <button
                   className="min-h-11 rounded-lg border-2 border-red-300 bg-white px-2 text-base font-semibold text-red-800"
@@ -191,12 +194,11 @@ export default function PhotoStep({
 
       {slow && (
         <div role="status" className="flex flex-col gap-2 rounded-xl border-2 border-amber-400 bg-amber-50 p-3 text-lg text-amber-950">
-          <p>
-            The AI is slower than usual. You can keep waiting, or type the medicines yourself.
-            <span lang="ar" dir="rtl" className="block">
-              الذكاء الاصطناعي أبطأ من المعتاد. يمكنك الانتظار أو إدخال الأدوية بنفسك.
-            </span>
-          </p>
+          <Bi
+            as="p"
+            en="The AI is slower than usual. You can keep waiting, or type the medicines yourself."
+            ar="الذكاء الاصطناعي أبطأ من المعتاد. يمكنك الانتظار أو إدخال الأدوية بنفسك."
+          />
           <button className={btn.secondary} onClick={enterByHand}>
             Enter by hand instead
           </button>

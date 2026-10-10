@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { Logo } from "@/components/Brand";
+import { Bi } from "@/components/Bi";
 
 type QA = { q: string; qAr: string; a: React.ReactNode; aAr: string; note?: { en: string; ar: string } };
 
@@ -22,7 +23,7 @@ const answers: QA[] = [
         Prescription photos sent to &quot;Read my prescription&quot; are processed once and never stored.
       </>
     ),
-    aAr: "الاسم، تاريخ الولادة، الجنس، فئة الدم، الحساسية، الأمراض، الأدوية، الإحالات والزيارات. لا نجمع رقم الهوية الوطنية. صور الوصفات القديمة يقرأها الذكاء الاصطناعي ولا تُحفظ أبداً. الصورة الشخصية: اختيارية وبموافقتك. تُطبع على بطاقتك فقط. لا نحفظها أبداً على خوادمنا، ولا نضعها في رمز QR، ولا نرسلها إلى الذكاء الاصطناعي. صور الوصفات المرسلة إلى \"اقرأ وصفتي\" تُعالَج مرة واحدة ولا تُحفظ أبداً.",
+    aAr: "الاسم، تاريخ الولادة، الجنس، فئة الدم، الحساسية، الأمراض، الأدوية، الإحالات والزيارات. لا نجمع رقم الهوية الوطنية. صور الوصفات القديمة يقرأها الذكاء الاصطناعي ولا تُحفظ أبداً. الصورة الشخصية: اختيارية وبموافقتك. تُطبع على بطاقتك فقط. لا نحفظها أبداً على خوادمنا، ولا نضعها في رمز \u2068QR\u2069، ولا نرسلها إلى الذكاء الاصطناعي. صور الوصفات المرسلة إلى \"اقرأ وصفتي\" تُعالَج مرة واحدة ولا تُحفظ أبداً.",
   },
   {
     q: "Who can see it?",
@@ -38,7 +39,7 @@ const answers: QA[] = [
         .
       </>
     ),
-    aAr: "فقط العاملون الصحيون الذين لديهم حساب شخصي معتمد، وفقط بعد أن يعطي المريض رمزه السري المؤلف من ٦ أرقام. مفتاحان: لا الطبيب وحده ولا الرمز وحده يفتح الملف. يستطيع المريض رؤية كل من فتح ملفه على صفحة /me.",
+    aAr: "فقط العاملون الصحيون الذين لديهم حساب شخصي معتمد، وفقط بعد أن يعطي المريض رمزه السري المؤلف من ٦ أرقام. مفتاحان: لا الطبيب وحده ولا الرمز وحده يفتح الملف. يستطيع المريض رؤية كل من فتح ملفه على صفحة \u2068/me\u2069.",
   },
   {
     q: "What does the card show without a PIN?",
@@ -49,7 +50,7 @@ const answers: QA[] = [
         <strong> Everything else is encrypted</strong> inside the QR code.
       </>
     ),
-    aAr: "الاسم، تاريخ الولادة، فئة الدم، الحساسية والحالات الحرجة: الحدّ الأدنى الذي يحتاجه فريق الطوارئ. كل المعلومات الأخرى مشفّرة داخل رمز QR.",
+    aAr: "الاسم، تاريخ الولادة، فئة الدم، الحساسية والحالات الحرجة: الحدّ الأدنى الذي يحتاجه فريق الطوارئ. كل المعلومات الأخرى مشفّرة داخل رمز \u2068QR\u2069.",
   },
   {
     q: "What if someone steals the card?",
@@ -97,36 +98,28 @@ export default function PrivacyPage() {
       <header className="mx-auto flex w-full max-w-3xl items-center justify-between px-5 pt-5">
         <Logo />
         <Link href="/" className="inline-flex min-h-11 items-center text-base font-semibold text-brand-dark underline underline-offset-4">
-          Home · <span lang="ar">الرئيسية</span>
+          <Bi center en="Home" ar="الرئيسية" />
         </Link>
       </header>
 
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-5 py-8">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-bold text-ink">Privacy &amp; safety</h1>
-          <p lang="ar" dir="rtl" className="text-2xl font-bold text-brand-dark">
-            الخصوصية والأمان
-          </p>
-        </div>
+        <Bi
+          as="h1"
+          center
+          en="Privacy & safety"
+          ar="الخصوصية والأمان"
+          className="gap-1 text-3xl font-bold"
+          enClassName="text-ink"
+          arClassName="text-brand-dark"
+        />
 
         {answers.map((x) => (
           <section key={x.q} className="flex flex-col gap-3 rounded-2xl border-2 border-line bg-white p-5">
-            <h2 className="flex flex-wrap items-baseline justify-between gap-2 text-xl font-bold text-ink">
-              <span>{x.q}</span>
-              <span lang="ar" dir="rtl" className="text-brand-dark">
-                {x.qAr}
-              </span>
-            </h2>
-            <p className="text-lg leading-relaxed text-ink">{x.a}</p>
-            <p lang="ar" dir="rtl" className="text-lg leading-relaxed text-muted">
-              {x.aAr}
-            </p>
+            <Bi as="h2" en={x.q} ar={x.qAr} className="gap-1 text-xl font-bold text-ink" arClassName="text-brand-dark" />
+            <Bi as="div" en={x.a} ar={x.aAr} className="gap-3 text-lg leading-relaxed" enClassName="text-ink" arClassName="text-muted" />
             {x.note && (
-              <div className="rounded-xl border-2 border-amber-400 bg-amber-50 p-4 text-base leading-relaxed">
-                <p className="text-amber-950">{x.note.en}</p>
-                <p lang="ar" dir="rtl" className="mt-2 text-amber-950">
-                  {x.note.ar}
-                </p>
+              <div className="rounded-xl border-2 border-amber-400 bg-amber-50 p-4 text-base leading-relaxed text-amber-950">
+                <Bi en={x.note.en} ar={x.note.ar} className="gap-2" />
               </div>
             )}
           </section>

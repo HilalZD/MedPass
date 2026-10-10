@@ -5,6 +5,7 @@
 // confirmed (Correct), fixed (Edit / pick a suggestion) or removed.
 
 import { useMemo, useState } from "react";
+import { Bi } from "@/components/Bi";
 import { unresolvedMeds, type DraftMed, type ExtractedDraft } from "@/lib/extract";
 import { createMatcher, type DrugRow } from "@/lib/match";
 import { DrugNameInput, FromPaper, btn, input, statusLabel, statusStyle, useDrugs } from "./ui";
@@ -207,9 +208,7 @@ function MedItem({
         <div className="flex flex-col gap-2">
           <p className="text-lg font-semibold">Did you mean…?</p>
           {candidates.length === 0 && (
-            <p className="text-base text-gray-700">
-              No match. Type the name. <span lang="ar">لا يوجد تطابق. اكتب الاسم.</span>
-            </p>
+            <Bi as="p" en="No match. Type the name." ar="لا يوجد تطابق. اكتب الاسم." className="text-base text-gray-700" />
           )}
           {/* The ingredient goes UNDER each brand, so look-alike brands with different
               ingredients (e.g. PANADOL SINUS vs PANADOL ADVANCE) can't be confused. */}

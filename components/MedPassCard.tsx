@@ -20,6 +20,7 @@
 
 import type { CSSProperties } from "react";
 import QRCode from "qrcode";
+import { CEDAR_ASPECT, CEDAR_DATA_URI } from "@/lib/brand/cedar";
 import { readEmergency, type Emergency } from "@/lib/card";
 
 export type MedPassCardProps = {
@@ -106,18 +107,18 @@ const SEX = { F: { ar: "أنثى", en: "Female" }, M: { ar: "ذكر", en: "Male"
 // Drawings
 // ---------------------------------------------------------------------------
 
-// Stylised cedar (the tree on Lebanon's flag): trunk + four tiers.
-export function Cedar({ size, color, opacity = 1 }: { size: string; color: string; opacity?: number }) {
+// The MedPass cedar (public/brand/cedar.svg). Embedded as a data: URI so it
+// also shows on the printed card, offline, and in the standalone demo card.
+// `size` is the HEIGHT; the width follows the logo's shape.
+export function Cedar({ size, opacity = 1 }: { size: string; opacity?: number }) {
   return (
-    <svg viewBox="0 0 100 110" style={{ width: size, height: size, opacity, display: "block" }} aria-hidden="true">
-      <g fill={color}>
-        <path d="M50 4 L64 20 H56 L72 36 H28 L44 20 H36 Z" />
-        <path d="M50 30 L78 52 H22 Z" />
-        <path d="M50 46 L88 72 H12 Z" />
-        <path d="M50 64 L96 92 H4 Z" />
-        <rect x="46" y="90" width="8" height="16" rx="1" />
-      </g>
-    </svg>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={CEDAR_DATA_URI}
+      alt=""
+      aria-hidden="true"
+      style={{ height: size, width: `calc(${size} * ${CEDAR_ASPECT})`, opacity, display: "block" }}
+    />
   );
 }
 
@@ -164,13 +165,13 @@ export function CardFront({ em, nameAr, sex, photo }: { em: Emergency; nameAr?: 
   return (
     <div style={side} data-side="front">
       {/* faint watermark */}
-      <div style={abs({ left: "40mm", top: "17mm", opacity: 0.045 })}>
-        <Cedar size="36mm" color={C.green} />
+      <div style={abs({ left: "44mm", top: "15mm", zIndex: 0, pointerEvents: "none" })}>
+        <Cedar size="37mm" opacity={0.07} />
       </div>
 
       {/* header */}
       <div style={abs({ left: "3.5mm", top: "3.2mm", display: "flex", alignItems: "center", gap: "1.6mm" })}>
-        <Cedar size="7.4mm" color={C.green} />
+        <Cedar size="8mm" />
         <div dir="ltr">
           <div style={{ fontSize: "3.1mm", fontWeight: 700, color: C.greenDark }}>MedPass</div>
           <div style={{ fontSize: "1.95mm", color: C.muted }}>Medical ID card</div>

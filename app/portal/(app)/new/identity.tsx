@@ -8,6 +8,7 @@
 //     (stored as no bloodType, printed as "Unknown / غير معروف")
 // lib/types.ts is unchanged: dateOfBirth is a string, bloodType is optional.
 
+import { Bi } from "@/components/Bi";
 import { BLOOD_TYPES } from "./DetailsStep";
 import { input } from "./ui";
 
@@ -39,9 +40,7 @@ export function identityIssues(p: { name: string; dateOfBirth?: string; sex?: st
 export function FieldError({ issue }: { issue?: IdentityIssue }) {
   if (!issue) return null;
   return (
-    <p className="text-base font-semibold text-red-800" role="alert">
-      {issue.en} <span lang="ar" dir="rtl">{issue.ar}</span>
-    </p>
+    <Bi as="p" en={issue.en} ar={issue.ar} className="text-base font-semibold text-red-800" />
   );
 }
 
@@ -53,9 +52,10 @@ export function DobInput({ value, onChange }: { value: string | undefined; onCha
     <button
       type="button"
       onClick={() => onChange(m === "year" ? (value?.slice(0, 4) ?? "") : value && value.length === 10 ? value : undefined)}
-      className={`min-h-11 flex-1 rounded-xl border-2 px-2 text-base font-semibold ${mode === m ? "border-brand bg-brand-50 text-brand-dark" : "border-line bg-white"}`}
+      aria-pressed={mode === m}
+      className={`min-h-12 flex-1 rounded-xl border-2 px-2 py-1 text-base font-semibold ${mode === m ? "border-brand bg-brand-50 text-brand-dark" : "border-line bg-white"}`}
     >
-      {en} · <span lang="ar">{ar}</span>
+      <Bi center en={en} ar={ar} />
     </button>
   );
 
@@ -82,15 +82,33 @@ export function DobInput({ value, onChange }: { value: string | undefined; onCha
   );
 }
 
-export function SexSelect({ value, onChange }: { value: string | undefined; onChange: (v: "F" | "M") => void }) {
+// A big tap button for one choice, English and Arabic on two lines.
+function Choice({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <select className={input} value={value ?? ""} onChange={(e) => onChange(e.target.value as "F" | "M")}>
-      <option value="" disabled>
-        Choose… · اختر
-      </option>
-      <option value="F">Female · أنثى</option>
-      <option value="M">Male · ذكر</option>
-    </select>
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      onClick={onClick}
+      className={`flex min-h-12 items-center justify-center rounded-xl border-2 px-2 py-1 text-lg font-semibold ${
+        selected ? "border-brand bg-brand text-white" : "border-line bg-white text-ink hover:border-brand"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+export function SexSelect({ value, onChange, labelId }: { value: string | undefined; onChange: (v: "F" | "M") => void; labelId?: string }) {
+  return (
+    <div role="radiogroup" aria-labelledby={labelId} className="grid grid-cols-2 gap-2">
+      <Choice selected={value === "F"} onClick={() => onChange("F")}>
+        <Bi center en="Female" ar="أنثى" />
+      </Choice>
+      <Choice selected={value === "M"} onClick={() => onChange("M")}>
+        <Bi center en="Male" ar="ذكر" />
+      </Choice>
+    </div>
   );
 }
 
@@ -99,24 +117,27 @@ export function BloodSelect({
   value,
   chosen,
   onChange,
+  labelId,
 }: {
   value: string | undefined;
   chosen: boolean;
   onChange: (bloodType: string | undefined) => void;
+  labelId?: string;
 }) {
   const valid = value && (BLOOD_TYPES as readonly string[]).includes(value);
   const selected = valid ? value : chosen && !value ? "unknown" : "";
   return (
-    <select className={input} value={selected} onChange={(e) => onChange(e.target.value === "unknown" ? undefined : e.target.value)}>
-      <option value="" disabled>
-        Choose… · اختر
-      </option>
+    <div role="radiogroup" aria-labelledby={labelId} className="grid grid-cols-4 gap-2">
       {BLOOD_TYPES.map((b) => (
-        <option key={b} value={b}>
-          {b}
-        </option>
+        <Choice key={b} selected={selected === b} onClick={() => onChange(b)}>
+          <span dir="ltr">{b}</span>
+        </Choice>
       ))}
-      <option value="unknown">Unknown · غير معروف</option>
-    </select>
+      <div className="col-span-4 grid">
+        <Choice selected={selected === "unknown"} onClick={() => onChange(undefined)}>
+          <Bi center en="Unknown" ar="غير معروف" />
+        </Choice>
+      </div>
+    </div>
   );
 }

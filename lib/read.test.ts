@@ -26,7 +26,7 @@ check("plain English wording only", plainEnglish("1 tablet twice daily after mea
 const med = (o: object) => ({ raw: "x", name: "Glucophage", strength: "850 mg", status: "green" as const, ...o });
 const ex = explain(med({ frequency: "1 tablet twice daily after meals" }), "en");
 check("example sentence", ex === "Glucophage 850 mg: 1 tablet twice a day after meals.", ex);
-check("Arabic uses the Arabic frequency", explain(med({ frequency: "twice daily", frequencyAr: "مرتين في اليوم" }), "ar") === "Glucophage 850 mg: مرتين في اليوم.");
+check("Arabic uses the Arabic frequency", explain(med({ frequency: "twice daily", frequencyAr: "مرتين في اليوم" }), "ar") === "\u2068Glucophage 850 mg\u2069: مرتين في اليوم.");
 check("unreadable line never names a drug", !explain(med({ status: "unreadable" }), "en").includes("Glucophage"));
 check("unreadable line → pharmacist", /pharmacist/.test(explain(med({ status: "unreadable" }), "en")));
 check("uncertain line says so", /unclear/.test(explain(med({ status: "yellow", frequency: "once daily" }), "en")));

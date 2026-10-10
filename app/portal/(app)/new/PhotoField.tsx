@@ -10,6 +10,7 @@
 import { useState } from "react";
 import { resizePhoto } from "@/lib/image";
 import { btn } from "./ui";
+import { Bi } from "@/components/Bi";
 
 export type NoPhotoReason = "refused" | "no_camera" | "later";
 export type PhotoValue = { photo: string | null; consent: boolean; noPhoto: NoPhotoReason | null };
@@ -49,9 +50,7 @@ export default function PhotoField({ value, onChange }: { value: PhotoValue; onC
 
   return (
     <div className={`flex flex-col gap-3 rounded-2xl border-2 bg-white p-3 ${decided ? "border-line" : "border-yellow-500"}`}>
-      <span className="text-lg font-medium">
-        Photo on the card · <span lang="ar">صورة على البطاقة</span>
-      </span>
+      <Bi en="Photo on the card" ar="صورة على البطاقة" className="text-lg font-medium" />
 
       <div className="flex items-start gap-3">
         <div className="flex h-32 w-24 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-brand bg-mint">
@@ -96,7 +95,7 @@ export default function PhotoField({ value, onChange }: { value: PhotoValue; onC
               onChange({ photo: null, consent: false, noPhoto: value.noPhoto });
             }}
           >
-            No photo · <span lang="ar">بدون صورة</span>
+            <Bi center en="No photo" ar="بدون صورة" />
           </button>
         </div>
       </div>
@@ -111,18 +110,20 @@ export default function PhotoField({ value, onChange }: { value: PhotoValue; onC
             checked={value.consent}
             onChange={(e) => onChange({ ...value, consent: e.target.checked })}
           />
-          <span>
-            The patient agrees to have their photo printed on their card.
-            <span lang="ar" dir="rtl" className="block text-base text-muted">
-              يوافق المريض على طباعة صورته على البطاقة.
-            </span>
-          </span>
+          <Bi
+            en="The patient agrees to have their photo printed on their card."
+            ar="يوافق المريض على طباعة صورته على البطاقة."
+            className="flex-1 gap-1"
+            arClassName="text-muted"
+          />
         </label>
       )}
 
       {!value.photo && choosingNo && (
         <fieldset className="flex flex-col gap-2">
-          <legend className="mb-1 text-base font-semibold">Why no photo? · لماذا بدون صورة؟</legend>
+          <legend className="mb-1 w-full text-base font-semibold">
+            <Bi en="Why no photo?" ar="لماذا بدون صورة؟" />
+          </legend>
           {REASONS.map((r) => (
             <label
               key={r.value}
@@ -135,21 +136,19 @@ export default function PhotoField({ value, onChange }: { value: PhotoValue; onC
                 checked={value.noPhoto === r.value}
                 onChange={() => onChange({ photo: null, consent: false, noPhoto: r.value })}
               />
-              <span>
-                {r.en} · <span lang="ar">{r.ar}</span>
-              </span>
+              <Bi en={r.en} ar={r.ar} className="flex-1" />
             </label>
           ))}
         </fieldset>
       )}
 
       {!decided && (
-        <p className="text-base font-semibold text-yellow-900">
-          Take or upload a photo (with consent), or choose &quot;No photo&quot; and a reason.
-          <span lang="ar" dir="rtl" className="block">
-            التقط أو حمّل صورة (بموافقة المريض)، أو اختر &quot;بدون صورة&quot; وسبباً.
-          </span>
-        </p>
+        <Bi
+          as="p"
+          en='Take or upload a photo (with consent), or choose "No photo" and a reason.'
+          ar='التقط أو حمّل صورة (بموافقة المريض)، أو اختر "بدون صورة" وسبباً.'
+          className="text-base font-semibold text-yellow-900"
+        />
       )}
       <p className="text-sm text-muted">Printed on the card only. Never uploaded or stored.</p>
       {error && <p className="rounded-xl bg-red-100 p-3 text-base text-red-900">{error}</p>}

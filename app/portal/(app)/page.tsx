@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Bi } from "@/components/Bi";
 import Lookup from "./Lookup";
 
 // Portal home: open an existing patient, or create a new one.
@@ -11,7 +12,7 @@ export default function PortalHome() {
         href="/portal/new"
         className="rounded-xl border-2 border-brand bg-white px-5 py-5 text-center text-xl font-semibold text-brand-dark"
       >
-        + New patient · مريض جديد
+        <Bi center en="+ New patient" ar="مريض جديد" />
       </Link>
     </div>
   );

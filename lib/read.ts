@@ -116,7 +116,10 @@ const sentence = (s: string) => {
 // One medicine → one plain sentence, ONLY from what was transcribed.
 export function explain(med: ReadMed, lang: Lang): string {
   if (med.status === "unreadable") return T[lang].unreadable;
-  const head = [med.name, med.strength].filter(Boolean).join(" ");
+  const name = [med.name, med.strength].filter(Boolean).join(" ");
+  // Inside an Arabic sentence, isolate the (Latin) drug name so it doesn't flip
+  // around the colon (U+2068 / U+2069 = the plain-text version of <bdi>).
+  const head = lang === "ar" ? `\u2068${name}\u2069` : name;
   const freq = lang === "ar" ? (med.frequencyAr ?? med.frequency) : med.frequency;
   const body = freq ? `${head}: ${lang === "ar" ? `${freq.trim().replace(/\.+$/, "")}.` : sentence(plainEnglish(freq))}` : `${head}. ${T[lang].noFrequency}`;
   return med.status === "yellow" ? `${body} ${T[lang].partial}` : body;

@@ -5,6 +5,7 @@
 
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
+import { Bi } from "./Bi";
 
 function subscribe(onChange: () => void) {
   window.addEventListener("online", onChange);
@@ -28,12 +29,9 @@ export default function OfflineNotice() {
   if (online) return null;
   return (
     <div role="status" className="border-b-2 border-amber-400 bg-amber-50 px-4 py-2 text-center text-base text-amber-950 print:hidden">
-      <p className="font-semibold">{OFFLINE_EN}</p>
-      <p lang="ar" dir="rtl">
-        {OFFLINE_AR}
-      </p>
-      <Link href="/scan" className="mt-1 inline-flex min-h-11 items-center font-semibold underline underline-offset-4">
-        Open the card scanner · <span lang="ar">فتح ماسح البطاقة</span>
+      <Bi as="div" center enClassName="font-semibold" en={OFFLINE_EN} ar={OFFLINE_AR} />
+      <Link href="/scan" className="mt-1 inline-flex min-h-11 items-center justify-center font-semibold underline underline-offset-4">
+        <Bi center en="Open the card scanner" ar="فتح ماسح البطاقة" />
       </Link>
     </div>
   );
