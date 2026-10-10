@@ -83,7 +83,7 @@ export type ExtractedPaper = z.infer<typeof paperSchema>;
 
 // The model sometimes writes `null` for a missing field. Our type uses
 // "field is absent" instead, so remove nulls before validating.
-function dropNulls(value: unknown): unknown {
+export function dropNulls(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(dropNulls);
   if (value && typeof value === "object") {
     const out: Record<string, unknown> = {};

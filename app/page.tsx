@@ -17,6 +17,14 @@ const doors = [
   },
   { href: "/scan", en: "Scan a card", ar: "مسح بطاقة", hint: "Works offline", hintAr: "يعمل بدون إنترنت", primary: false },
   { href: "/me", en: "My record", ar: "ملفي الطبي", hint: "See who opened it", hintAr: "شاهد من فتح ملفك", primary: false },
+  {
+    href: "/read",
+    en: "Read my prescription",
+    ar: "اقرأ وصفتي",
+    hint: "Plain words, from a photo",
+    hintAr: "بكلمات بسيطة، من صورة",
+    primary: false,
+  },
 ];
 
 const steps = [
@@ -54,7 +62,7 @@ export default function Home() {
           </p>
         </section>
 
-        <nav className="grid gap-3 sm:grid-cols-3" aria-label="Start">
+        <nav className="grid gap-3 sm:grid-cols-2" aria-label="Start">
           {doors.map((d) => (
             <Link
               key={d.href}

@@ -1,17 +1,14 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
+import { aiClient, transcribe } from "@/lib/ai";
 import { requireClinician } from "@/lib/db/auth";
 import { getMatcher } from "@/lib/db/drugs";
 import { SYSTEM_PROMPT, applyMatches, mergeDrafts, parsePaper, tagPaper, type ExtractedDraft } from "@/lib/extract";
 
 // Each paper is read in its own AI call, all at the same time, so the total
 // time is about the time of the slowest paper (12–15 s in our tests).
-// Vercel stops the function after 60 s. Worst case per paper: 2 tries x 25 s
-// AI timeout (no extra SDK retry) = 50 s, so we always answer before that.
+// Vercel stops the function after 60 s; lib/ai.ts keeps each paper under 50 s.
 export const maxDuration = 60;
-const AI_TIMEOUT_MS = 25_000;
 
-const AI_SLOW = "The AI is too slow right now. Try again in a minute.";
 const BY_HAND = "You can also enter the medicines by hand.";
 const RETAKE = "Retake it in better light, flat and in focus.";
 
@@ -42,70 +39,8 @@ function errorResponse(message: string, status: number) {
   return Response.json({ error: message }, { status });
 }
 
-type PaperResult =
-  | { ok: true; draft: ExtractedDraft }
-  | { ok: false; error: string; status: number };
-
-// Read ONE paper. Never throws: failures come back as { ok: false }.
-async function readPaper(client: Anthropic, image: string, n: number, today: string): Promise<PaperResult> {
-  const content: Anthropic.ContentBlockParam[] = [
-    { type: "image", source: { type: "base64", media_type: "image/jpeg", data: image } },
-    { type: "text", text: "Transcribe this paper. Reply with only the JSON object." },
-  ];
-
-  // Try twice: if the first reply is not valid JSON in our shape, ask again once.
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    let response: Anthropic.Message;
-    try {
-      response = await client.messages.create({
-        model: process.env.ANTHROPIC_MODEL ?? "claude-opus-5-5",
-        max_tokens: 8000,
-        system: SYSTEM_PROMPT,
-        messages: [{ role: "user", content }],
-      });
-    } catch (err) {
-      // Log only the kind of error, never the image or the record.
-      console.error(`extract: paper ${n} API call failed`, err instanceof Anthropic.APIError ? err.status : "network");
-      // Plain-language messages; every one offers the way out (enter by hand).
-      if (err instanceof Anthropic.APIConnectionTimeoutError) {
-        return { ok: false, error: `${AI_SLOW} ${BY_HAND}`, status: 504 };
-      }
-      if (err instanceof Anthropic.RateLimitError) {
-        return { ok: false, error: `The AI is busy right now. Wait a minute and try again. ${BY_HAND}`, status: 429 };
-      }
-      if (err instanceof Anthropic.AuthenticationError) {
-        return { ok: false, error: "The server's AI key is not valid. Tell the MedPass team, and enter the medicines by hand for now.", status: 500 };
-      }
-      if (err instanceof Anthropic.InternalServerError) {
-        // 5xx, including 529 "overloaded"
-        return { ok: false, error: `The AI service is down or overloaded right now. Try again in a minute. ${BY_HAND}`, status: 503 };
-      }
-      if (err instanceof Anthropic.APIConnectionError) {
-        return { ok: false, error: `Could not reach the AI. Check the internet connection and try again. ${BY_HAND}`, status: 502 };
-      }
-      return { ok: false, error: `The AI could not read the papers. Try again. ${BY_HAND}`, status: 502 };
-    }
-
-    if (response.stop_reason === "refusal") {
-      return { ok: false, error: "The AI declined to read this photo. Please enter it by hand.", status: 422 };
-    }
-
-    const text = response.content
-      .filter((b): b is Anthropic.TextBlock => b.type === "text")
-      .map((b) => b.text)
-      .join("");
-
-    try {
-      return { ok: true, draft: tagPaper(parsePaper(text), n, today) };
-    } catch {
-      console.error(`extract: paper ${n} invalid JSON from model (attempt ${attempt})`);
-    }
-  }
-  return { ok: false, error: "The AI's answer did not make sense twice in a row.", status: 502 };
-}
-
 export async function POST(request: Request) {
-  // Only logged-in clinicians may use the AI (it costs money per call).
+  // Only logged-in clinicians may use the AI here (it costs money per call).
   const clinician = await requireClinician();
   if (clinician instanceof Response) return clinician;
 
@@ -120,11 +55,18 @@ export async function POST(request: Request) {
     return errorResponse("Please send 1 to 3 JPEG photos.", 400);
   }
 
-  const client = new Anthropic({ timeout: AI_TIMEOUT_MS, maxRetries: 0 });
+  const client = aiClient();
   const today = new Date().toISOString().slice(0, 10);
 
   // One call per paper, in parallel. Paper numbers are 1-based, in upload order.
-  const results = await Promise.all(images.map((image, i) => readPaper(client, image, i + 1, today)));
+  const results = await Promise.all(
+    images.map((image, i) =>
+      transcribe(client, image, SYSTEM_PROMPT, (text) => tagPaper(parsePaper(text), i + 1, today), {
+        label: `extract: paper ${i + 1}`,
+        wayOut: BY_HAND,
+      }),
+    ),
+  );
   console.log(`extract: ${images.length} paper(s), ${results.filter((r) => r.ok).length} read`);
 
   if (!results.some((r) => r.ok)) {
@@ -134,7 +76,7 @@ export async function POST(request: Request) {
   }
 
   const failedPapers = results.flatMap((r, i) => (r.ok ? [] : [i + 1]));
-  const merged = mergeDrafts(results.map((r) => (r.ok ? r.draft : null)));
+  const merged = mergeDrafts(results.map((r) => (r.ok ? r.value : null)));
 
   // Check every readable med against the MoPH list. If the list cannot be
   // loaded, treat every med as "not found" (yellow), never as fine.
@@ -153,7 +95,7 @@ export async function POST(request: Request) {
     warnings: [
       ...failedPapers.map((n) => `Paper ${n} could not be read. ${RETAKE}`),
       ...results.flatMap((r, i) =>
-        r.ok && hardToRead(r.draft) ? [`Paper ${i + 1} was hard to read (it may be blurry or dark). ${RETAKE}`] : [],
+        r.ok && hardToRead(r.value) ? [`Paper ${i + 1} was hard to read (it may be blurry or dark). ${RETAKE}`] : [],
       ),
       ...warnings,
     ],
