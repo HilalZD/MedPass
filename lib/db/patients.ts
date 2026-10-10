@@ -63,7 +63,7 @@ export const MAX_PIN_TRIES = 5;
 const LOCK_MINUTES = 15;
 
 // MedPass ID typed by a human → canonical form, or null if it can't be one.
-// "mp 7k3q92xd" → "MP-7K3Q-92XD".
+// "mp ab2c3def" → "MP-AB2C-3DEF".
 export function normalizeMedPassId(text: string): string | null {
   const s = text.toUpperCase().replace(/[^A-Z0-9]/g, "").replace(/^MP/, "");
   return /^[A-Z0-9]{8}$/.test(s) ? `MP-${s.slice(0, 4)}-${s.slice(4)}` : null;

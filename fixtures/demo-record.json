@@ -1,15 +1,14 @@
 {
   "v": 2,
-  "id": "MP-HZ26-DM8X",
+  "id": "MP-7K3Q-92XD",
   "cardVersion": 1,
-  "patient": { "name": "Hilal Zeidan", "nameAr": "هلال زيدان", "dateOfBirth": "2005-03-14", "sex": "M", "bloodType": "O+" },
-  "emergency": { "allergies": ["Penicillin"], "critical": ["Insulin-dependent diabetes"] },
-  "conditions": [{ "name": "Type 2 diabetes", "verified": "clinician" }],
+  "patient": { "name": "Hilal Zeidan", "nameAr": "هلال زيدان", "dateOfBirth": "2007-07-07", "sex": "M", "bloodType": "B-" },
+  "emergency": { "allergies": ["Penicillin"], "critical": ["Asthma"] },
+  "conditions": [{ "name": "Asthma", "verified": "clinician" }],
   "meds": [
-    { "name": "Glucophage", "ingredient": "Metformin", "strength": "850 mg", "frequency": "twice daily", "status": "green", "verified": "clinician" },
-    { "name": "Lantus", "ingredient": "Insulin glargine", "strength": "18 units", "frequency": "at bedtime", "status": "green", "verified": "clinician" }
+    { "name": "Ventolin", "ingredient": "Salbutamol", "strength": "100 mcg", "frequency": "as needed", "status": "green", "verified": "clinician" }
   ],
   "referrals": [],
-  "visits": [{ "date": "2026-10-10", "place": "AUB Medical Center", "note": "Demo card issued" }],
+  "visits": [{ "date": "2026-10-10", "place": "Tyre Primary Healthcare Centre", "note": "MedPass card issued" }],
   "updated": "2026-10-10"
 }

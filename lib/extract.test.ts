@@ -150,9 +150,9 @@ const tag = (papers: ExtractedPaper[]) => papers.map((p, i) => tagPaper(p, i + 1
 // --- 8. draftToRecord strips review-only fields -------------------------------
 {
   const { draft } = mergeDrafts(tag([arabicPaper, glucophagePaper, { ...empty(), emergency: { allergies: ["PENICILLIN"], critical: [] } }]));
-  const record = draftToRecord(draft, { id: "MP-7K3Q-92XD", cardVersion: 1 });
+  const record = draftToRecord(draft, { id: "MP-AB2C-3DEF", cardVersion: 1 });
   const json = JSON.stringify(record);
-  check("record: v, id, cardVersion set", record.v === 2 && record.id === "MP-7K3Q-92XD" && record.cardVersion === 1);
+  check("record: v, id, cardVersion set", record.v === 2 && record.id === "MP-AB2C-3DEF" && record.cardVersion === 1);
   check("record: no sourcePaper anywhere", !json.includes("sourcePaper"));
   check("record: no raw anywhere", !json.includes('"raw"'));
   check("record: no ageWritten", !json.includes("ageWritten"));

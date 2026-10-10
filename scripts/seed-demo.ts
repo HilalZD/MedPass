@@ -1,6 +1,6 @@
 /**
  * Seeds the judges' demo patient: "Fatima Haidar" (فاطمة حيدر), FICTIONAL,
- * from fixtures/sample-record.json, MedPass ID MP-7K3Q-92XD, PIN 123456.
+ * from fixtures/sample-record.json, MedPass ID MP-Z8EX-SN4Y, PIN 123456.
  *
  * Her access log already tells the story:
  *   2 days ago  Registered by Nurse Rana Khalil, Tyre Primary Healthcare Centre
@@ -9,7 +9,7 @@
  *
  * Safe to run twice: it resets Fatima's record, PIN, lockout and card version,
  * and writes the story log entries only the first time. It never touches any
- * other patient (e.g. Hilal's demo card MP-HZ26-DM8X).
+ * other patient (e.g. Hilal's own card MP-7K3Q-92XD).
  *
  * Run from the repo root:
  *   npx tsx --env-file=.env.local scripts/seed-demo.ts

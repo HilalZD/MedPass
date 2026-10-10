@@ -1,7 +1,7 @@
 /**
- * Puts the demo patient (fixtures/demo-record.json, PIN 246810) into Supabase,
+ * Puts Hilal's card (fixtures/demo-record.json, MP-7K3Q-92XD, PIN 246810) into Supabase,
  * so the printed demo card also works online (portal + /me).
- * Fictional medical data. Safe to run again: it resets the demo patient's
+ * Hilal's own card details (provided by Hilal). Safe to run again: it resets the patient's
  * record, PIN, lockout and card version, and adds a "create" log entry the first time.
  *
  * Run from the repo root:
@@ -9,7 +9,7 @@
  *
  * Optional: clean the demo card's access log (e.g. test entries before judging):
  *   npx tsx --env-file=.env.local supabase/seed-demo-patient.ts --reset-log
- * This deletes the access-log entries of MP-HZ26-DM8X ONLY (hard-wired below,
+ * This deletes the access-log entries of MP-7K3Q-92XD ONLY (hard-wired below,
  * never any other patient), then writes one fresh "create" entry.
  *
  * (Talks to Supabase directly with the service role key, because lib/db/* is
@@ -26,7 +26,7 @@ const TYRE_FACILITY = "11111111-1111-1111-1111-111111111111"; // seeded in schem
 
 // The ONLY patient whose log --reset-log may delete. Not taken from the fixture
 // file on purpose: editing the JSON can never point the delete at someone else.
-const DEMO_CARD_ID = "MP-HZ26-DM8X";
+const DEMO_CARD_ID = "MP-7K3Q-92XD"; // Hilal's printed card
 const RESET_LOG = process.argv.includes("--reset-log");
 
 async function main() {
@@ -51,7 +51,7 @@ async function main() {
     locked_until: null,
     card_version: record.cardVersion,
     created_by: clinician?.user_id ?? null,
-    verified_fields: ["name"],
+    verified_fields: ["name", "nameAr"],
   });
   if (error) throw new Error(`patients upsert failed: ${error.code} ${error.message}`);
 

@@ -23,8 +23,7 @@ const PIN = "246810";
 const PHOTO = `data:image/jpeg;base64,${readFileSync("fixtures/demo-photo.jpg").toString("base64")}`;
 
 // Demo record, shared with supabase/seed-demo-patient.ts so the printed card
-// and the online record match. The medical details are FICTIONAL demo values.
-// EDIT fixtures/demo-record.json to add dateOfBirth ("YYYY-MM-DD") and bloodType.
+// and the online record match. These are Hilal's own card details (provided by Hilal).
 const DEMO = JSON.parse(readFileSync("fixtures/demo-record.json", "utf8")) as MedPassRecord;
 const NAME_AR = DEMO.patient.nameAr;
 const SEX = DEMO.patient.sex;
@@ -51,6 +50,7 @@ async function main() {
   check("decode with PIN 246810 gives back the same record", same);
 
   const em = readEmergency(payload);
+  console.log("readEmergency():", JSON.stringify(em));
   check("readEmergency: MedPass ID", em.id === DEMO.id, em.id);
   check("readEmergency: card version", em.cardVersion === DEMO.cardVersion, `v${em.cardVersion}`);
   check("readEmergency: name", em.name === DEMO.patient.name, em.name);

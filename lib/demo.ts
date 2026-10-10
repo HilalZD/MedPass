@@ -9,7 +9,7 @@ export const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
 
 // The fictional sample patient created by scripts/seed-demo.ts.
 export const DEMO_PATIENT = {
-  id: "MP-7K3Q-92XD",
+  id: "MP-Z8EX-SN4Y",
   pin: "123456",
   name: "Fatima Haidar",
 };

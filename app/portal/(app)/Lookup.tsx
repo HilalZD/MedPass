@@ -13,7 +13,7 @@ import { btn, input } from "./new/ui";
 // The camera library only works in the browser.
 const Scanner = dynamic(() => import("./Scanner"), { ssr: false });
 
-// "mp 7k3q92xd" → "MP-7K3Q-92XD", or null if it can't be a MedPass ID.
+// "mp ab2c3def" → "MP-AB2C-3DEF", or null if it can't be a MedPass ID.
 function normalizeId(text: string): string | null {
   const s = text.toUpperCase().replace(/[^A-Z0-9]/g, "").replace(/^MP/, "");
   return /^[A-Z0-9]{8}$/.test(s) ? `MP-${s.slice(0, 4)}-${s.slice(4)}` : null;
@@ -28,7 +28,7 @@ export default function Lookup() {
   function open(e: React.FormEvent) {
     e.preventDefault();
     const id = normalizeId(text);
-    if (!id) return setError("A MedPass ID looks like MP-7K3Q-92XD.");
+    if (!id) return setError("A MedPass ID looks like MP-AB2C-3DEF.");
     router.push(`/portal/patient/${id}`);
   }
 
