@@ -14,5 +14,5 @@ export const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
 export const DEMO_CARD = {
   id: "MP-7K3Q-92XD",
   pin: "123456",
-  name: { en: "Hilal Zeidan", ar: "هلال زيدان" },
+  name: "Hilal Zeidan",
 };
