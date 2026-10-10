@@ -241,7 +241,7 @@ function fromDrug(med: DraftMed, d: DrugRow): DraftMed {
 }
 
 // Edit or add a medicine. The name autocompletes from the MoPH list only.
-function MedForm({
+export function MedForm({
   med,
   drugs,
   onSave,

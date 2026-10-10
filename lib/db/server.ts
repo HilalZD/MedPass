@@ -26,7 +26,10 @@ export type PatientRow = {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  verified_fields: PatientField[]; // patient details a clinician has checked/changed
 };
+
+export type PatientField = "name" | "dateOfBirth" | "sex" | "bloodType";
 
 export type AccessLogRow = {
   id: number;

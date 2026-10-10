@@ -48,6 +48,11 @@ create table if not exists patients (
   updated_at      timestamptz not null default now()
 );
 
+-- Which patient details a clinician has checked/changed, e.g. {name,bloodType}.
+-- (lib/types.ts has no "verified" flag on patient details, so it lives here.)
+-- Separate statement so re-running this file adds it to an existing table.
+alter table patients add column if not exists verified_fields text[] not null default '{}';
+
 -- Who did what to which record, and when. The patient can read their own log.
 -- clinician_id / facility_id are empty when the patient opens their own record (/me).
 create table if not exists access_log (

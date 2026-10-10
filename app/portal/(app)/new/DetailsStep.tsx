@@ -8,7 +8,7 @@ import type { ExtractedDraft } from "@/lib/extract";
 import { NameList } from "./ReviewStep";
 import { btn, input } from "./ui";
 
-const BLOOD_TYPES = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"] as const;
+export const BLOOD_TYPES = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"] as const;
 
 export type Confirmed = { name: boolean; dob: boolean };
 

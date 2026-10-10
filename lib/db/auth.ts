@@ -8,6 +8,7 @@
 //   authClient() has told us who the user is.
 import "server-only";
 import { cookies } from "next/headers";
+import { connection } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { db, type ClinicianRow } from "./server";
 
@@ -44,6 +45,11 @@ export type Clinician = {
 // Returns the logged-in clinician, or null if nobody is logged in or the
 // login is not linked to a facility in the clinicians table.
 export async function getClinician(): Promise<Clinician | null> {
+  // Wait for the real request FIRST. With Partial Prefetching, cookies() alone
+  // does not stop prerendering (session data is part of the App Shell), and
+  // getClaims() checks the token's expiry with Date.now(). connection() makes
+  // everything after it request-time only, so it is never prerendered or cached.
+  await connection();
   const supabase = await authClient();
   // getClaims() checks the login token's signature, so it can't be faked by
   // editing the cookie.
