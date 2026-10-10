@@ -42,7 +42,7 @@ Next.js App Router + TypeScript + Tailwind on Vercel. Supabase (Postgres + Auth)
 lib/types.ts, fixtures/sample-record.json, public/drugs.json, CLAUDE.md.
 
 ## Ownership (only edit your own files)
-- Hilal: app/api/*, app/dev/*, lib/extract.ts, lib/image.ts, lib/db/*, supabase/*, app/portal/*, app/me/*, middleware.ts
+- Hilal: app/api/*, app/dev/*, lib/extract.ts, lib/image.ts, lib/db/*, supabase/*, app/portal/*, app/me/*, proxy.ts
 - Teammate: scripts/*, public/drugs.json, lib/card.ts, lib/match.ts, components/DrugInfo.tsx, app/card/*, app/print/*, app/scan/* (offline crisis viewer), PWA/service worker config
 - Shared (agree first): lib/types.ts, fixtures/*, CLAUDE.md, app/layout.tsx
 
