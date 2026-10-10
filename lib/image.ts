@@ -71,3 +71,40 @@ export async function resizePhoto(file: File): Promise<string> {
     URL.revokeObjectURL(url);
   }
 }
+
+// How sharp a photo is (variance of the Laplacian on a small grey copy).
+// Calibrated on our 3 sample papers: sharp photos score ~1000–1850; blurred or
+// dark ones (bad light) score ~2–250. Below BLURRY_BELOW we suggest a retake
+// (a hint only, never a block: a false alarm must not stop a clinician).
+export const BLURRY_BELOW = 200;
+
+export async function photoSharpness(dataUrl: string): Promise<number> {
+  const img = new Image();
+  img.src = dataUrl;
+  await img.decode();
+  const scale = Math.min(1, 512 / Math.max(img.naturalWidth, img.naturalHeight));
+  const w = Math.max(3, Math.round(img.naturalWidth * scale));
+  const h = Math.max(3, Math.round(img.naturalHeight * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return Infinity; // can't measure: never warn
+  ctx.drawImage(img, 0, 0, w, h);
+  const px = ctx.getImageData(0, 0, w, h).data;
+  const grey = new Float32Array(w * h);
+  for (let i = 0; i < w * h; i++) grey[i] = 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2];
+  let sum = 0;
+  let sumSq = 0;
+  let n = 0;
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const i = y * w + x;
+      const lap = grey[i - 1] + grey[i + 1] + grey[i - w] + grey[i + w] - 4 * grey[i];
+      sum += lap;
+      sumSq += lap * lap;
+      n++;
+    }
+  }
+  return n ? sumSq / n - (sum / n) ** 2 : Infinity;
+}

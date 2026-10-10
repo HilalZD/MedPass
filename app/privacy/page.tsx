@@ -30,7 +30,7 @@ const answers: QA[] = [
         Only clinicians with an individual, approved account, <strong>and</strong> only after the patient gives their
         6-digit PIN. Two keys: neither the clinician nor the PIN alone opens a record. The patient can see every access
         at{" "}
-        <Link href="/me" className="font-semibold text-brand-dark underline underline-offset-4">
+        <Link href="/me" className="inline-flex min-h-11 items-center font-semibold text-brand-dark underline underline-offset-4">
           /me
         </Link>
         .
@@ -94,7 +94,7 @@ export default function PrivacyPage() {
     <div className="flex flex-1 flex-col">
       <header className="mx-auto flex w-full max-w-3xl items-center justify-between px-5 pt-5">
         <Logo />
-        <Link href="/" className="text-base font-semibold text-brand-dark underline underline-offset-4">
+        <Link href="/" className="inline-flex min-h-11 items-center text-base font-semibold text-brand-dark underline underline-offset-4">
           Home · <span lang="ar">الرئيسية</span>
         </Link>
       </header>

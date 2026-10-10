@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Logo } from "@/components/Brand";
 import DemoHint from "@/components/DemoHint";
+import OfflineNotice, { OFFLINE_EN } from "@/components/OfflineNotice";
 import type { MedPassRecord, Verified } from "@/lib/types";
 
 type LogEntry = { at: string; action: string; facility: string | null; clinician: string | null };
@@ -29,7 +30,10 @@ export default function MePage() {
       .finally(() => setChecking(false));
   }, []);
 
-  const lock = useCallback(() => {
+  // why = "expired": the 10 minutes ran out, so the login form says so.
+  const [expired, setExpired] = useState(false);
+  const lock = useCallback((why?: "expired") => {
+    setExpired(why === "expired");
     setData(null);
     fetch("/api/me/unlock", { method: "DELETE" }).catch(() => {});
   }, []);
@@ -38,6 +42,7 @@ export default function MePage() {
   // sunlight, and the boxes were designed for it (even if the phone is in dark mode).
   return (
     <div className="flex flex-1 flex-col text-ink">
+    <OfflineNotice />
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 p-4">
       <header className="flex flex-col items-center gap-2 pt-2 text-center">
         <Logo subtitle="My record · ملفي" />
@@ -46,13 +51,13 @@ export default function MePage() {
         </h1>
       </header>
 
-      {checking ? <p className="text-center text-lg">…</p> : data ? <Record data={data} onLock={lock} /> : <Login onOpen={setData} />}
+      {checking ? <p className="text-center text-lg">…</p> : data ? <Record data={data} onLock={lock} /> : <Login expired={expired} onOpen={(d) => { setExpired(false); setData(d); }} />}
     </main>
     </div>
   );
 }
 
-function Login({ onOpen }: { onOpen: (d: Payload) => void }) {
+function Login({ onOpen, expired }: { onOpen: (d: Payload) => void; expired: boolean }) {
   const [id, setId] = useState("");
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
@@ -72,7 +77,15 @@ function Login({ onOpen }: { onOpen: (d: Payload) => void }) {
       if (!res.ok) throw new Error(body.error ?? "Something went wrong.");
       onOpen(body);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No internet connection.");
+      setError(
+        err instanceof TypeError || !navigator.onLine
+          ? navigator.onLine
+            ? "Could not reach the server. Check the connection and try again."
+            : OFFLINE_EN
+          : err instanceof Error
+            ? err.message
+            : "Something went wrong.",
+      );
       setPin("");
     } finally {
       setBusy(false);
@@ -89,6 +102,14 @@ function Login({ onOpen }: { onOpen: (d: Payload) => void }) {
         </span>
       </p>
 
+      {expired && (
+        <p role="status" className="rounded-2xl border-2 border-amber-400 bg-amber-50 p-4 text-lg text-amber-950">
+          Your 10 minutes are up, so your record was locked. Enter your ID and PIN again to see it.
+          <span lang="ar" dir="rtl" className="block">
+            انتهت الدقائق العشر وتم قفل ملفك. أدخل رقمك ورمزك السري مرة أخرى.
+          </span>
+        </p>
+      )}
       <DemoHint />
 
       <label className="flex flex-col gap-2 text-lg font-medium">
@@ -136,7 +157,7 @@ function Login({ onOpen }: { onOpen: (d: Payload) => void }) {
   );
 }
 
-function Record({ data, onLock }: { data: Payload; onLock: () => void }) {
+function Record({ data, onLock }: { data: Payload; onLock: (why?: "expired") => void }) {
   const r = data.record;
   const p = r.patient;
   const openReferrals = r.referrals.filter((x) => x.status === "open");
@@ -232,7 +253,7 @@ function Record({ data, onLock }: { data: Payload; onLock: () => void }) {
 
       <AccessLog log={data.log} />
 
-      <button className={btnSecondary} onClick={onLock}>
+      <button className={btnSecondary} onClick={() => onLock()}>
         🔒 Lock · قفل
       </button>
     </div>
@@ -240,13 +261,13 @@ function Record({ data, onLock }: { data: Payload; onLock: () => void }) {
 }
 
 // "Unlocked for 9:59" + Lock. Live clock only in the browser, from the server's expiry time.
-function Countdown({ until, onLock }: { until: number; onLock: () => void }) {
+function Countdown({ until, onLock }: { until: number; onLock: (why?: "expired") => void }) {
   const [left, setLeft] = useState<number | null>(null);
   useEffect(() => {
     const tick = () => {
       const ms = until - Date.now();
       setLeft(ms);
-      if (ms <= 0) onLock();
+      if (ms <= 0) onLock("expired");
     };
     const first = setTimeout(tick, 0);
     const t = setInterval(tick, 1000);
@@ -266,7 +287,7 @@ function Countdown({ until, onLock }: { until: number; onLock: () => void }) {
           {mm}:{String(ss).padStart(2, "0")}
         </span>
       </span>
-      <button className={btnSecondary} onClick={onLock}>
+      <button className={btnSecondary} onClick={() => onLock()}>
         Lock
       </button>
     </div>

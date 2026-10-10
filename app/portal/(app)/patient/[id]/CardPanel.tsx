@@ -17,8 +17,8 @@ import { encode, fitRecord } from "@/lib/card";
 import type { MedPassRecord } from "@/lib/types";
 import CardMeter, { cardIsFull } from "../../new/CardMeter";
 import PhotoField, { EMPTY_PHOTO, photoDecided, type PhotoValue } from "../../new/PhotoField";
-import { ErrorBox, btn } from "../../new/ui";
-import { PinGate, type Payload } from "./PatientView";
+import { btn, ErrorBox, networkErrorMessage, portalFetch } from "../../new/ui";
+import { PinGate, type LockReason, type Payload } from "./PatientView";
 
 type Mode = "update" | "lost";
 
@@ -43,7 +43,7 @@ export default function CardPanel({
   save: () => Promise<boolean>; // true only if the save worked
   pin: string | null;
   setPin: (p: string) => void;
-  onLock: () => void;
+  onLock: (why?: LockReason) => void;
 }) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode | null>(null);
@@ -82,13 +82,13 @@ export default function CardPanel({
         return;
       }
       // 2. New card version (same MedPass ID), logged with the reason.
-      const res = await fetch(`/api/portal/patients/${encodeURIComponent(id)}/reissue`, {
+      const res = await portalFetch(`/api/portal/patients/${encodeURIComponent(id)}/reissue`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ cardVersion: data.cardVersion, reason: mode === "lost" ? "lost" : "update" }),
       });
       const body = await res.json();
-      if (res.status === 403 && body.needPin) return onLock();
+      if (res.status === 403 && body.needPin) return onLock("expired");
       if (!res.ok) throw new Error(body.error ?? "Could not issue the new card.");
       setData(body);
 
@@ -100,7 +100,7 @@ export default function CardPanel({
       setPrintExtra({ nameAr: printed.patient.nameAr, sex: printed.patient.sex, photo: photo.photo && photo.consent ? photo.photo : undefined });
       router.push("/print");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No internet connection.");
+      setError(e instanceof Error ? e.message : networkErrorMessage());
       setBusy(false);
     }
   }

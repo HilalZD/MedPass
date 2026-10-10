@@ -11,9 +11,9 @@ import { createMatcher, type Matcher } from "@/lib/match";
 import type { Med, MedPassRecord, Verified } from "@/lib/types";
 import { BloodSelect, DobInput, FieldError, SexSelect, identityIssues } from "../../new/identity";
 import { AddLine, MedForm } from "../../new/ReviewStep";
-import { ErrorBox, btn, input, statusLabel, statusStyle, useDrugs } from "../../new/ui";
+import { btn, ErrorBox, input, networkErrorMessage, portalFetch, statusLabel, statusStyle, useDrugs } from "../../new/ui";
 import CardPanel from "./CardPanel";
-import type { PatientField, Payload } from "./PatientView";
+import type { LockReason, PatientField, Payload } from "./PatientView";
 
 type EditMed = Med & { note?: string };
 type Working = Omit<MedPassRecord, "meds"> & { meds: EditMed[] };
@@ -43,7 +43,7 @@ export default function RecordEditor({
   setData: (d: Payload) => void;
   pin: string | null;
   setPin: (p: string | null) => void;
-  onLock: () => void;
+  onLock: (why?: LockReason) => void;
 }) {
   const drugs = useDrugs();
   const matcher = useMemo(() => (drugs.length ? createMatcher(drugs) : null), [drugs]);
@@ -79,14 +79,14 @@ export default function RecordEditor({
     setSaving(true);
     setError("");
     try {
-      const res = await fetch(`/api/portal/patients/${encodeURIComponent(id)}`, {
+      const res = await portalFetch(`/api/portal/patients/${encodeURIComponent(id)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ record: workingRecord, baseUpdatedAt: data.updatedAt }),
       });
       const body = await res.json();
       if (res.status === 403 && body.needPin) {
-        onLock();
+        onLock("expired");
         return false;
       }
       if (!res.ok) throw new Error(body.error ?? "Could not save.");
@@ -95,7 +95,7 @@ export default function RecordEditor({
       setTimeout(() => setSavedMsg(""), 3000);
       return true;
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No internet connection.");
+      setError(e instanceof Error ? e.message : networkErrorMessage());
       return false;
     } finally {
       setSaving(false);
@@ -283,14 +283,24 @@ export default function RecordEditor({
   );
 }
 
-function Header({ record, cardVersion, until, onLock }: { record: MedPassRecord; cardVersion: number; until: number; onLock: () => void }) {
+function Header({
+  record,
+  cardVersion,
+  until,
+  onLock,
+}: {
+  record: MedPassRecord;
+  cardVersion: number;
+  until: number;
+  onLock: (why?: LockReason) => void;
+}) {
   // Live clock: computed only in the browser, from the expiry time the server sent.
   const [left, setLeft] = useState<number | null>(null);
   useEffect(() => {
     const tick = () => {
       const ms = until - Date.now();
       setLeft(ms);
-      if (ms <= 0) onLock();
+      if (ms <= 0) onLock("expired");
     };
     const first = setTimeout(tick, 0);
     const t = setInterval(tick, 1000);
@@ -301,19 +311,27 @@ function Header({ record, cardVersion, until, onLock }: { record: MedPassRecord;
   }, [until, onLock]);
   const mm = left === null ? 15 : Math.max(0, Math.floor(left / 60000));
   const ss = left === null ? 0 : Math.max(0, Math.floor((left % 60000) / 1000));
+  const lastMinute = left !== null && left > 0 && left < 60_000;
 
   return (
     <section className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-brand-50 p-3 text-lg">
+      <div
+        className={`flex flex-wrap items-center justify-between gap-2 rounded-xl p-3 text-lg ${lastMinute ? "border-2 border-amber-400 bg-amber-50" : "bg-brand-50"}`}
+      >
         <span>
           🔓 Unlocked for{" "}
           <span className="font-mono font-semibold">
             {mm}:{String(ss).padStart(2, "0")}
           </span>
         </span>
-        <button className={btn.small} onClick={onLock}>
+        <button className={btn.small} onClick={() => onLock()}>
           Lock now
         </button>
+        {lastMinute && (
+          <p role="status" className="w-full text-base font-semibold text-amber-950">
+            Less than a minute left. Save your changes now; after that the patient must type their PIN again.
+          </p>
+        )}
       </div>
       <h1 className="text-3xl font-bold" dir="auto">
         {record.patient.name}
@@ -562,7 +580,7 @@ function StringList({ title, items, onChange }: { title: string; items: string[]
           <li key={i} className="flex items-center gap-2 rounded-full border-2 border-red-300 bg-white py-1 ps-3 pe-1 text-lg">
             {it}
             <button
-              className="rounded-full px-2 text-red-800"
+              className="flex h-11 w-11 items-center justify-center rounded-full text-red-800"
               aria-label={`Remove ${it}`}
               onClick={() => onChange(items.filter((_, j) => j !== i))}
             >

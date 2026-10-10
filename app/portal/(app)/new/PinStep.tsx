@@ -9,7 +9,7 @@ import { fitRecord } from "@/lib/card";
 import { draftToRecord, type ExtractedDraft } from "@/lib/extract";
 import type { MedPassRecord } from "@/lib/types";
 import CardMeter from "./CardMeter";
-import { ErrorBox, btn, input } from "./ui";
+import { btn, ErrorBox, input, networkErrorMessage, portalFetch } from "./ui";
 
 const sixDigits = (s: string) => /^\d{6}$/.test(s);
 
@@ -44,7 +44,7 @@ export default function PinStep({
     setSaving(true);
     setError("");
     try {
-      const res = await fetch("/api/portal/patients", {
+      const res = await portalFetch("/api/portal/patients", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         // No photo here: the card photo stays in this browser and only goes to /print.
@@ -54,7 +54,7 @@ export default function PinStep({
       if (!res.ok) throw new Error(data.error ?? `Server error (${res.status})`);
       onSaved(data.record as MedPassRecord, pin);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No internet connection. Please try again.");
+      setError(e instanceof Error ? e.message : networkErrorMessage());
     } finally {
       setSaving(false);
     }

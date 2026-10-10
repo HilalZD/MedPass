@@ -60,7 +60,7 @@ export default function DoneStep({
       <p className="text-lg">{record.patient.name}</p>
       <div className="w-full rounded-2xl border-4 border-gray-900 p-5">
         <p className="text-lg text-gray-600">MedPass ID</p>
-        <p className="font-mono text-4xl font-bold tracking-wider" dir="ltr">
+        <p className="font-mono text-3xl font-bold tracking-wider break-all sm:text-4xl" dir="ltr">
           {record.id}
         </p>
       </div>
@@ -82,7 +82,7 @@ export default function DoneStep({
       </button>
       <p className="rounded-xl bg-gray-100 p-4 text-lg">
         The patient can check who opened their record at{" "}
-        <a href="/me" target="_blank" rel="noopener" className="font-mono font-semibold text-brand-dark underline">
+        <a href="/me" target="_blank" rel="noopener" className="inline-flex min-h-11 items-center font-mono font-semibold text-brand-dark underline">
           /me
         </a>{" "}
         with their MedPass ID and PIN.

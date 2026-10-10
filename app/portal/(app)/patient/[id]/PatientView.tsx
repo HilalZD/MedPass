@@ -7,8 +7,12 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { MedPassRecord } from "@/lib/types";
-import { ErrorBox, btn, input } from "../../new/ui";
+import { btn, ErrorBox, input, networkErrorMessage, portalFetch } from "../../new/ui";
 import RecordEditor from "./RecordEditor";
+
+// Why the record was locked again: the clinician pressed "Lock now", or the
+// 15-minute unlock ran out (then the PIN screen says so).
+export type LockReason = "manual" | "expired";
 
 export type PatientField = "name" | "nameAr" | "dateOfBirth" | "sex" | "bloodType";
 export type ReissueReason = "lost" | "update";
@@ -36,6 +40,7 @@ type State =
 export default function PatientView({ id, scannedCardVersion }: { id: string; scannedCardVersion: number | null }) {
   const [state, setState] = useState<State>({ kind: "loading" });
   const [pin, setPin] = useState<string | null>(null);
+  const [lockNotice, setLockNotice] = useState("");
 
   // First load: if still unlocked from earlier (e.g. a page refresh), open
   // straight away; otherwise ask for the PIN.
@@ -43,15 +48,15 @@ export default function PatientView({ id, scannedCardVersion }: { id: string; sc
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`/api/portal/patients/${encodeURIComponent(id)}`);
+        const res = await portalFetch(`/api/portal/patients/${encodeURIComponent(id)}`);
         const data = await res.json();
         if (cancelled) return;
         if (res.ok) setState({ kind: "open", data });
         else if (res.status === 404) setState({ kind: "notFound", message: data.error });
         else if (res.status === 403) setState({ kind: "pin", cardVersion: data.cardVersion ?? null, reason: data.lastReissueReason ?? null });
         else setState({ kind: "error", message: data.error ?? "Something went wrong." });
-      } catch {
-        if (!cancelled) setState({ kind: "error", message: "No internet connection. The hospital portal needs internet." });
+      } catch (e) {
+        if (!cancelled) setState({ kind: "error", message: e instanceof Error ? e.message : networkErrorMessage() });
       }
     })();
     return () => {
@@ -59,8 +64,13 @@ export default function PatientView({ id, scannedCardVersion }: { id: string; sc
     };
   }, [id]);
 
-  const lock = useCallback(async () => {
+  const lock = useCallback(async (why: LockReason = "manual") => {
     setPin(null);
+    setLockNotice(
+      why === "expired"
+        ? "The 15-minute unlock ended, so the record was locked to protect the patient. Ask the patient to type their PIN again. Unsaved changes were not kept."
+        : "",
+    );
     setState((s) =>
       s.kind === "open"
         ? { kind: "pin", cardVersion: s.data.cardVersion, reason: s.data.lastReissueReason }
@@ -103,8 +113,10 @@ export default function PatientView({ id, scannedCardVersion }: { id: string; sc
       {state.kind === "pin" ? (
         <PinGate
           id={id}
+          notice={lockNotice}
           onOpen={(data, typedPin) => {
             setPin(typedPin);
+            setLockNotice("");
             setState({ kind: "open", data });
           }}
         />
@@ -129,11 +141,13 @@ export function PinGate({
   onOpen,
   title = "Patient's PIN",
   note = "Ask the patient to type their 6-digit PIN.",
+  notice = "",
 }: {
   id: string;
   onOpen: (data: Payload, pin: string) => void;
   title?: string;
   note?: string;
+  notice?: string; // e.g. "the 15-minute unlock ended"
 }) {
   const [value, setValue] = useState("");
   const [error, setError] = useState("");
@@ -144,7 +158,7 @@ export function PinGate({
     setBusy(true);
     setError("");
     try {
-      const res = await fetch(`/api/portal/patients/${encodeURIComponent(id)}/unlock`, {
+      const res = await portalFetch(`/api/portal/patients/${encodeURIComponent(id)}/unlock`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pin: value }),
@@ -153,7 +167,7 @@ export function PinGate({
       if (!res.ok) throw new Error(data.error ?? "Something went wrong.");
       onOpen(data, value);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No internet connection.");
+      setError(err instanceof Error ? err.message : networkErrorMessage());
       setValue("");
     } finally {
       setBusy(false);
@@ -166,6 +180,14 @@ export function PinGate({
       <p className="font-mono text-xl" dir="ltr">
         {id}
       </p>
+      {notice && (
+        <p role="status" className="rounded-xl border-2 border-amber-400 bg-amber-50 p-3 text-lg text-amber-950">
+          {notice}
+          <span lang="ar" dir="rtl" className="block">
+            انتهت مدة فتح الملف (١٥ دقيقة). اطلب من المريض إدخال رمزه السري مرة أخرى.
+          </span>
+        </p>
+      )}
       <p className="text-lg text-gray-700">{note}</p>
       <input
         className={`${input} text-center font-mono text-3xl tracking-[0.5em]`}

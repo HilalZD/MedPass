@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { Logo } from "@/components/Brand";
+import OfflineNotice from "@/components/OfflineNotice";
 import { Cedar } from "@/components/MedPassCard";
 
 const doors = [
@@ -27,6 +28,7 @@ const steps = [
 export default function Home() {
   return (
     <div className="flex flex-1 flex-col">
+      <OfflineNotice />
       <header className="mx-auto flex w-full max-w-3xl items-center justify-between px-5 pt-5">
         <Logo />
         <span lang="ar" dir="rtl" className="text-lg font-bold text-ink">
@@ -102,7 +104,7 @@ export default function Home() {
       </main>
 
       <footer className="mx-auto flex w-full max-w-3xl flex-wrap items-center justify-between gap-3 border-t-2 border-line px-5 py-5 text-base text-muted">
-        <Link href="/privacy" className="font-semibold text-brand-dark underline underline-offset-4">
+        <Link href="/privacy" className="inline-flex min-h-11 items-center font-semibold text-brand-dark underline underline-offset-4">
           Privacy &amp; safety · <span lang="ar">الخصوصية والأمان</span>
         </Link>
         <span>Prototype · Hack for Health Lebanon 2026</span>

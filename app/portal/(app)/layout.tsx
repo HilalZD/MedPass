@@ -5,11 +5,15 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { Logo } from "@/components/Brand";
+import OfflineNotice from "@/components/OfflineNotice";
+import { SessionWatcher } from "./new/ui";
 import { getClinician } from "@/lib/db/auth";
 
 export default function PortalLayout({ children }: LayoutProps<"/portal">) {
   return (
     <div className="flex flex-1 flex-col text-ink">
+      <OfflineNotice />
+      <SessionWatcher />
       <header className="border-b-4 border-brand bg-white">
         <div className="mx-auto flex w-full max-w-2xl flex-wrap items-center justify-between gap-3 px-4 py-3">
           <Logo href="/portal" subtitle="Hospital portal" />

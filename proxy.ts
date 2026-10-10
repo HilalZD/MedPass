@@ -34,7 +34,7 @@ export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
   if (!loggedIn && path.startsWith("/api/portal")) {
-    return Response.json({ error: "Please log in again." }, { status: 401 });
+    return Response.json({ error: "Your login expired. Please log in again." }, { status: 401 });
   }
   if (!loggedIn && path.startsWith("/portal") && path !== "/portal/login") {
     const url = request.nextUrl.clone();

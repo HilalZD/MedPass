@@ -5,6 +5,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Cedar } from "@/components/MedPassCard";
+import OfflineNotice, { OFFLINE_EN } from "@/components/OfflineNotice";
 import { DEMO_MODE } from "@/lib/demo";
 
 export default function LoginPage() {
@@ -41,7 +42,7 @@ export default function LoginPage() {
       router.replace(next?.startsWith("/portal/") ? next : "/portal");
       router.refresh();
     } catch {
-      setError("No internet connection. Please try again.");
+      setError(navigator.onLine ? "Could not reach the server. Check the connection and try again." : OFFLINE_EN);
     } finally {
       setLoading(false);
     }
@@ -49,6 +50,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex flex-1 flex-col text-ink">
+    <OfflineNotice />
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 p-6">
       <div className="flex flex-col items-center text-center">
         <Cedar size="3.5rem" color="#2b8a6e" />

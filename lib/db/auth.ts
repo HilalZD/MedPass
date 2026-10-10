@@ -111,7 +111,7 @@ export async function signInClinician(email: string, password: string): Promise<
 export async function requireClinician(): Promise<Clinician | Response> {
   const clinician = await getClinician();
   if (!clinician) {
-    return Response.json({ error: "Please log in again." }, { status: 401 });
+    return Response.json({ error: "Your login expired. Please log in again." }, { status: 401 });
   }
   return clinician;
 }

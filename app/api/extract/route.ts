@@ -11,6 +11,18 @@ import { SYSTEM_PROMPT, applyMatches, mergeDrafts, parsePaper, tagPaper, type Ex
 export const maxDuration = 60;
 const AI_TIMEOUT_MS = 25_000;
 
+const AI_SLOW = "The AI is too slow right now. Try again in a minute.";
+const BY_HAND = "You can also enter the medicines by hand.";
+const RETAKE = "Retake it in better light, flat and in focus.";
+
+// A paper the AI could barely read: it may be blurry or too dark.
+function hardToRead(d: ExtractedDraft): boolean {
+  const readableMeds = d.meds.filter((m) => m.status !== "unreadable").length;
+  const anythingElse = d.conditions.length + d.emergency.allergies.length + d.referrals.length + d.visits.length;
+  if (d.meds.length > 0) return readableMeds === 0 || readableMeds < d.meds.length / 2;
+  return anythingElse === 0;
+}
+
 // Request body: { images: ["<base64 JPEG>", ...] }, 1 to 3 images.
 // A "data:image/jpeg;base64," prefix is allowed and removed.
 const MAX_IMAGE_CHARS = 2_000_000; // ~1.5 MB per image after base64; resized photos are far smaller
@@ -54,16 +66,24 @@ async function readPaper(client: Anthropic, image: string, n: number, today: str
     } catch (err) {
       // Log only the kind of error, never the image or the record.
       console.error(`extract: paper ${n} API call failed`, err instanceof Anthropic.APIError ? err.status : "network");
+      // Plain-language messages; every one offers the way out (enter by hand).
+      if (err instanceof Anthropic.APIConnectionTimeoutError) {
+        return { ok: false, error: `${AI_SLOW} ${BY_HAND}`, status: 504 };
+      }
       if (err instanceof Anthropic.RateLimitError) {
-        return { ok: false, error: "The AI is busy right now. Please wait a minute and try again.", status: 429 };
+        return { ok: false, error: `The AI is busy right now. Wait a minute and try again. ${BY_HAND}`, status: 429 };
       }
       if (err instanceof Anthropic.AuthenticationError) {
-        return { ok: false, error: "The server's AI key is not valid. Tell the MedPass team.", status: 500 };
+        return { ok: false, error: "The server's AI key is not valid. Tell the MedPass team, and enter the medicines by hand for now.", status: 500 };
+      }
+      if (err instanceof Anthropic.InternalServerError) {
+        // 5xx, including 529 "overloaded"
+        return { ok: false, error: `The AI service is down or overloaded right now. Try again in a minute. ${BY_HAND}`, status: 503 };
       }
       if (err instanceof Anthropic.APIConnectionError) {
-        return { ok: false, error: "Could not reach the AI. Check the internet connection and try again.", status: 502 };
+        return { ok: false, error: `Could not reach the AI. Check the internet connection and try again. ${BY_HAND}`, status: 502 };
       }
-      return { ok: false, error: "The AI could not read the papers. Please try again.", status: 502 };
+      return { ok: false, error: `The AI could not read the papers. Try again. ${BY_HAND}`, status: 502 };
     }
 
     if (response.stop_reason === "refusal") {
@@ -131,7 +151,10 @@ export async function POST(request: Request) {
     record: draft,
     failedPapers,
     warnings: [
-      ...failedPapers.map((n) => `Paper ${n} could not be read. Please retake the photo of paper ${n}.`),
+      ...failedPapers.map((n) => `Paper ${n} could not be read. ${RETAKE}`),
+      ...results.flatMap((r, i) =>
+        r.ok && hardToRead(r.draft) ? [`Paper ${i + 1} was hard to read (it may be blurry or dark). ${RETAKE}`] : [],
+      ),
       ...warnings,
     ],
   });
