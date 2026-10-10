@@ -21,6 +21,7 @@ export default function DevExtractPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [record, setRecord] = useState<ExtractedDraft | null>(null);
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [seconds, setSeconds] = useState(0);
 
   async function addFiles(files: FileList | null) {
@@ -41,6 +42,7 @@ export default function DevExtractPage() {
     setLoading(true);
     setError("");
     setRecord(null);
+    setWarnings([]);
     const started = Date.now();
     try {
       const res = await fetch("/api/extract", {
@@ -51,6 +53,7 @@ export default function DevExtractPage() {
       const data = await res.json().catch(() => ({ error: `Server error (${res.status})` }));
       if (!res.ok) throw new Error(data.error ?? `Server error (${res.status})`);
       setRecord(data.record);
+      setWarnings(data.warnings ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
     } finally {
@@ -144,6 +147,17 @@ export default function DevExtractPage() {
         <section className="space-y-4">
           <p className="text-sm text-gray-600">Done in {seconds} s</p>
 
+          {warnings.map((w) => (
+            <p key={w} className="rounded-lg border border-yellow-500 bg-yellow-50 p-3 text-yellow-900">
+              {w}
+            </p>
+          ))}
+
+          <h2 className="text-xl font-semibold">Allergies</h2>
+          <p>
+            {record.emergency.allergies.map((a) => `${a.name} (paper ${a.sourcePaper})`).join(", ") || "None written"}
+          </p>
+
           <h2 className="text-xl font-semibold">Medicines ({record.meds.length})</h2>
           <ul className="space-y-2">
             {record.meds.map((m, i) => (
@@ -151,6 +165,7 @@ export default function DevExtractPage() {
                 <div className="font-semibold">
                   {m.name} {m.strength} {m.frequency && `· ${m.frequency}`}
                   <span className="ml-2 text-xs uppercase">[{m.status}]</span>
+                  <span className="ml-2 text-xs">from paper {m.sourcePaper}</span>
                 </div>
                 {m.ingredient && <div className="text-sm">Ingredient: {m.ingredient}</div>}
                 <div className="mt-1 font-mono text-sm" dir="auto">

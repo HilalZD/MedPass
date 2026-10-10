@@ -1,33 +1,56 @@
 import { z } from "zod";
-import type { MedPassRecord } from "./types";
-
-// What the AI produces: a MedPassRecord WITHOUT v, id and cardVersion.
-// Those three are set by the portal when the patient is saved, never by the AI.
-export type ExtractedDraft = Omit<MedPassRecord, "v" | "id" | "cardVersion">;
+import type { Med, MedPassRecord } from "./types";
 
 // ---------------------------------------------------------------------------
-// Zod schema that mirrors ExtractedDraft.
-// If you change lib/types.ts, the type check below the schema will fail
-// until this schema is updated too.
+// Types
+//
+// The AI reads ONE paper per call. Each paper becomes an ExtractedDraft where
+// every med / condition / allergy / critical condition / referral remembers
+// which paper it came from (sourcePaper, 1-based), so the review screen can
+// say "from paper 2". mergeDrafts() then combines the papers in plain code.
+//
+// v, id and cardVersion are NOT here: the portal sets them when the patient
+// is saved. draftToRecord() turns a reviewed draft into a MedPassRecord and
+// strips everything that must not be saved (sourcePaper, raw, ageWritten).
+// ---------------------------------------------------------------------------
+
+type Sourced = { sourcePaper: number };
+
+export type DraftMed = Med & Sourced;
+export type DraftItem = { name: string } & Sourced; // an allergy or a critical condition
+export type DraftCondition = MedPassRecord["conditions"][number] & Sourced;
+export type DraftReferral = MedPassRecord["referrals"][number] & Sourced;
+
+export type ExtractedDraft = {
+  // ageWritten: an age exactly as written on the paper ("64"). Never turned into a birth date.
+  patient: MedPassRecord["patient"] & { ageWritten?: string };
+  emergency: { allergies: DraftItem[]; critical: DraftItem[] };
+  conditions: DraftCondition[];
+  meds: DraftMed[];
+  referrals: DraftReferral[];
+  visits: MedPassRecord["visits"];
+  updated: string;
+};
+
+// ---------------------------------------------------------------------------
+// Zod schema for what the model returns for ONE paper (no sourcePaper yet,
+// allergies as plain strings). tagPaper() turns it into an ExtractedDraft.
 // ---------------------------------------------------------------------------
 
 const status = z.enum(["green", "yellow", "unreadable"]);
-const verified = z.enum(["patient", "clinician"]);
 
 const med = z.object({
-  // `raw` is optional in MedPassRecord (it is stripped before encoding),
+  // `raw` is optional in MedPassRecord (it is stripped before saving),
   // but the AI must ALWAYS give it so the patient can compare with the paper.
   raw: z.string(),
   name: z.string(),
   ingredient: z.string().optional(),
   strength: z.string().optional(),
   frequency: z.string().optional(),
-  drugId: z.string().optional(),
   status,
-  verified,
 });
 
-export const draftSchema = z.object({
+export const paperSchema = z.object({
   patient: z.object({
     name: z.string(),
     // Only a full date ("1962-04-18"). Anything else (e.g. just "1962") is
@@ -35,12 +58,14 @@ export const draftSchema = z.object({
     dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().catch(undefined),
     sex: z.enum(["F", "M"]).optional().catch(undefined),
     bloodType: z.string().optional(),
+    // The model may write 64 or "64"; keep it as text.
+    ageWritten: z.union([z.string(), z.number()]).transform(String).optional(),
   }),
   emergency: z.object({
     allergies: z.array(z.string()),
     critical: z.array(z.string()),
   }),
-  conditions: z.array(z.object({ name: z.string(), verified })),
+  conditions: z.array(z.object({ name: z.string() })),
   meds: z.array(med),
   referrals: z.array(
     z.object({
@@ -50,13 +75,9 @@ export const draftSchema = z.object({
     }),
   ),
   visits: z.array(z.object({ date: z.string(), place: z.string(), note: z.string() })),
-  updated: z.string(),
 });
 
-// Compile-time check: anything the schema accepts is a valid ExtractedDraft.
-// If this line shows a red error, the schema and lib/types.ts disagree.
-const _schemaMatchesType: (r: z.infer<typeof draftSchema>) => ExtractedDraft = (r) => r;
-void _schemaMatchesType;
+export type ExtractedPaper = z.infer<typeof paperSchema>;
 
 // The model sometimes writes `null` for a missing field. Our type uses
 // "field is absent" instead, so remove nulls before validating.
@@ -74,67 +95,216 @@ function dropNulls(value: unknown): unknown {
 
 // Pull the JSON object out of the model's reply (it may add ```json fences)
 // and validate it. Throws if the JSON is broken or has the wrong shape.
-export function parseDraft(text: string): ExtractedDraft {
+export function parsePaper(text: string): ExtractedPaper {
   const start = text.indexOf("{");
   const end = text.lastIndexOf("}");
   if (start === -1 || end <= start) throw new Error("No JSON object in reply");
   const json = JSON.parse(text.slice(start, end + 1));
-  return draftSchema.parse(dropNulls(json));
+  return paperSchema.parse(dropNulls(json));
+}
+
+// Paper number n (1-based) → ExtractedDraft. Everything is "verified: patient"
+// because nothing from the AI is clinician-verified.
+export function tagPaper(paper: ExtractedPaper, n: number, updated: string): ExtractedDraft {
+  return {
+    patient: { ...paper.patient },
+    emergency: {
+      allergies: paper.emergency.allergies.map((name) => ({ name, sourcePaper: n })),
+      critical: paper.emergency.critical.map((name) => ({ name, sourcePaper: n })),
+    },
+    conditions: paper.conditions.map((c) => ({ name: c.name, verified: "patient", sourcePaper: n })),
+    meds: paper.meds.map((m) => ({ ...m, verified: "patient", sourcePaper: n })),
+    referrals: paper.referrals.map((r) => ({ ...r, sourcePaper: n })),
+    visits: paper.visits.map((v) => ({ ...v })),
+    updated,
+  };
 }
 
 // ---------------------------------------------------------------------------
-// System prompt for the vision model.
+// Merging several papers (pure function, tested in lib/extract.test.ts)
 // ---------------------------------------------------------------------------
 
-export const SYSTEM_PROMPT = `You transcribe photographed medical papers (prescriptions, discharge notes, lab or clinic letters) into a structured health record for MedPass, a medical ID card for Lebanon. A patient will check every item you produce against the original paper, and a clinician may later rely on it, so a wrong dose is dangerous and a missing one is safe.
+// Case-insensitive, extra spaces ignored. "Glucophage  850 MG" == "glucophage 850 mg".
+const norm = (s: string | undefined) => (s ?? "").toLowerCase().replace(/\s+/g, " ").trim();
+const medKey = (m: Med) => `${norm(m.name)}|${norm(m.strength)}|${norm(m.frequency)}`;
+
+function uniqueBy<T>(items: T[], key: (item: T) => string): T[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const k = key(item);
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+// Rules:
+// - Everything from every paper is kept (union).
+// - Meds: an EXACT duplicate (same name + strength + frequency, case-insensitive)
+//   is listed once. Same drug name with a different strength or frequency:
+//   both are kept and both become "yellow" so a human must decide.
+//   Unreadable meds are never merged (two unreadable lines are not the same drug).
+// - Allergies are NEVER dropped, not even exact duplicates. (draftToRecord
+//   removes exact duplicates only at save time, after a human has reviewed them.)
+// - Conditions, critical conditions, referrals, visits: exact duplicates listed once.
+// - Patient details: the first paper that has a value wins; if papers disagree
+//   (e.g. two different names), a warning is returned for the review screen.
+//
+// `papers` has one slot per uploaded paper, in order (slot 0 = paper 1).
+// A paper that could not be read is null, so paper numbers stay correct.
+export function mergeDrafts(papers: (ExtractedDraft | null)[]): { draft: ExtractedDraft; warnings: string[] } {
+  const numbered = papers.flatMap((d, i) => (d ? [{ d: structuredClone(d), paper: i + 1 }] : []));
+  const all = numbered.map((x) => x.d); // copies: never change the caller's objects
+  const warnings: string[] = [];
+
+  // Meds
+  const meds: DraftMed[] = [];
+  const conflicted = new Set<string>();
+  for (const m of all.flatMap((d) => d.meds)) {
+    if (m.status !== "unreadable") {
+      const readable = meds.filter((o) => o.status !== "unreadable");
+      const duplicate = readable.find((o) => medKey(o) === medKey(m));
+      if (duplicate) {
+        // Keep the more careful status of the two.
+        if (m.status === "yellow" && duplicate.status === "green") duplicate.status = "yellow";
+        continue;
+      }
+      const sameName = readable.filter((o) => norm(o.name) === norm(m.name));
+      if (sameName.length > 0) {
+        for (const o of [...sameName, m]) if (o.status === "green") o.status = "yellow";
+        if (!conflicted.has(norm(m.name))) {
+          conflicted.add(norm(m.name));
+          warnings.push(`The papers disagree about ${m.name}. Check the strength and how often it is taken.`);
+        }
+      }
+    }
+    meds.push(m);
+  }
+
+  // Patient details
+  const patient: ExtractedDraft["patient"] = { name: "" };
+  const fields = [
+    ["name", "name"],
+    ["dateOfBirth", "date of birth"],
+    ["sex", "sex"],
+    ["bloodType", "blood type"],
+    ["ageWritten", "age"],
+  ] as const;
+  for (const [field, label] of fields) {
+    const values = numbered
+      .map(({ d, paper }) => ({ value: d.patient[field], paper }))
+      .filter((x): x is { value: string; paper: number } => Boolean(x.value?.trim()));
+    if (values.length === 0) continue;
+    (patient as Record<string, string>)[field] = values[0].value;
+    const distinct = uniqueBy(values, (x) => norm(x.value));
+    if (distinct.length > 1) {
+      const list = distinct.map((x) => `"${x.value}" (paper ${x.paper})`).join(", ");
+      warnings.push(`The papers show different ${label}s: ${list}. Check with the patient.`);
+    }
+  }
+
+  return {
+    draft: {
+      patient,
+      emergency: {
+        allergies: all.flatMap((d) => d.emergency.allergies),
+        critical: uniqueBy(all.flatMap((d) => d.emergency.critical), (c) => norm(c.name)),
+      },
+      conditions: uniqueBy(all.flatMap((d) => d.conditions), (c) => norm(c.name)),
+      meds,
+      referrals: uniqueBy(all.flatMap((d) => d.referrals), (r) => `${norm(r.to)}|${norm(r.reason)}`),
+      visits: uniqueBy(all.flatMap((d) => d.visits), (v) => `${v.date}|${norm(v.place)}|${norm(v.note)}`),
+      updated: all[0]?.updated ?? new Date().toISOString().slice(0, 10),
+    },
+    warnings,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Reviewed draft → MedPassRecord, ready to save. Strips sourcePaper, raw and
+// ageWritten. Exact duplicate allergies (case-insensitive) are listed once here.
+// ---------------------------------------------------------------------------
+
+export function draftToRecord(
+  draft: ExtractedDraft,
+  ids: { id: string; cardVersion: number },
+): MedPassRecord {
+  const { ageWritten: _age, ...patient } = draft.patient;
+  void _age;
+  return {
+    v: 2,
+    id: ids.id,
+    cardVersion: ids.cardVersion,
+    patient,
+    emergency: {
+      allergies: uniqueBy(draft.emergency.allergies, (a) => norm(a.name)).map((a) => a.name),
+      critical: draft.emergency.critical.map((c) => c.name),
+    },
+    conditions: draft.conditions.map(({ name, verified }) => ({ name, verified })),
+    meds: draft.meds.map(({ sourcePaper: _s, raw: _r, ...m }) => {
+      void _s;
+      void _r;
+      return m;
+    }),
+    referrals: draft.referrals.map(({ sourcePaper: _s, ...r }) => {
+      void _s;
+      return r;
+    }),
+    visits: draft.visits.map((v) => ({ ...v })),
+    updated: draft.updated,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// System prompt for the vision model. One call = one paper.
+// ---------------------------------------------------------------------------
+
+export const SYSTEM_PROMPT = `You transcribe ONE photographed medical paper (a prescription, discharge note, lab or clinic letter) into structured JSON for MedPass, a medical ID card for Lebanon. A clinician and the patient will check every item you produce against the original paper, so a wrong item is dangerous and a missing one is safe.
 
 TRANSCRIBE ONLY
-- Write down only what is written on the paper. Never infer, suggest, complete or correct a dose, a diagnosis or a drug.
-- Never guess a drug name from a partial or smudged word. If you cannot read the drug name with confidence, it is unreadable.
+- Write down only what is written on the paper. Never infer, suggest, complete or correct a dose, a diagnosis, an allergy or a drug.
 - If a field is not on the paper, leave it out of the JSON. Do not use null.
 
 MEDICATIONS (meds)
+- Only lines that name a medicine go in meds. A line telling the patient to see a doctor or specialist, or to have a test, is a referral, not a medicine.
+- NEVER skip a medicine line. If a line looks like a medicine but you cannot read it, still add it as "unreadable".
 - One entry per medication line. "raw" is REQUIRED: the exact text of that line as written, in its original language and spelling, including the doctor's shorthand.
-- "name": the drug name as written (brand or generic). "ingredient": only if the paper itself states the active ingredient. "strength": e.g. "850 mg", "18 units".
-- "frequency": you may expand standard doctor shorthand into plain English, e.g. "1x2" or "bid" -> "twice daily", "1x3" or "tid" -> "three times daily", "od" -> "once daily", "hs" -> "at bedtime", "prn" -> "when needed". Write "IU" as "units". "raw" stays exactly as written.
+- "name": the drug name copied letter by letter as written (brand or generic). NEVER replace it with a different, similar-looking drug name you know, even if the written word is not a drug you recognise.
+- "ingredient": only if the paper itself states the active ingredient. "strength": e.g. "850 mg", "18 units".
+- "frequency": you may expand standard doctor shorthand into plain English, e.g. "1x2" or "bid" -> "twice daily", "1x3" or "tid" -> "three times daily", "1x1" or "od" -> "once daily", "hs" -> "at bedtime", "prn" -> "when needed". Write "IU" as "units". "raw" stays exactly as written.
 - "status":
-  - "unreadable" if the drug name cannot be read. Then set "name" to "Unreadable" and still fill "raw" with whatever characters you can see.
+  - "unreadable" only if letters of the drug name are genuinely illegible (smudged, cut off, scribbled). If you can clearly read the word, copy it as written and do NOT mark it unreadable, even if you do not recognise it as a drug. Then set "name" to "Unreadable", put every character you CAN see in "raw" (e.g. "Ca?dor 10mg"), and still fill "strength" and "frequency" if those are clearly readable. A human will identify the drug; you never pick one.
   - "yellow" if the name is readable but the strength or frequency is missing, partly readable or uncertain.
   - "green" only if name, strength and frequency are all clearly readable.
-- Leave "drugId" out; the app fills it in later.
 
-EMERGENCY INFO
-- Every allergy mentioned goes in emergency.allergies (e.g. "Penicillin").
-- Conditions that are life-critical in an emergency also go in emergency.critical, in addition to conditions: insulin-dependent diabetes, epilepsy, use of an anticoagulant (blood thinner), severe heart conditions. Only add them if the paper shows them, either stated directly or through an insulin, anti-epileptic or anticoagulant prescription.
+ALLERGIES, CONDITIONS, CRITICAL CONDITIONS
+- These come ONLY from words actually written on the paper. NEVER derive them from a medicine: insulin (e.g. Lantus) does NOT mean "insulin-dependent diabetes", an anticoagulant does NOT mean a heart condition, an antiepileptic does NOT mean epilepsy. The clinician adds those during review.
+- emergency.allergies: every allergy written on the paper (e.g. "Penicillin").
+- conditions: every diagnosis written on the paper.
+- emergency.critical: only conditions written on the paper that are life-critical in an emergency (e.g. the paper says "insulin-dependent diabetes", "epilepsy", "on anticoagulants"). They also stay in conditions.
+
+PATIENT
+- name: as written, or "" if it is not there.
+- dateOfBirth: only if a full date of birth is written, as YYYY-MM-DD.
+- ageWritten: if an age is written (e.g. "Age 64"), copy the number as text, e.g. "64". NEVER calculate a birth date from an age.
+- sex: "F" or "M", only if written. Never guess it from the name.
+- bloodType: only if written.
 
 OTHER FIELDS
-- conditions: diagnoses written on the paper.
-- referrals: referrals written on the paper, status "open" unless the paper says it was done.
-- visits: only if the paper records a dated visit or admission: date (YYYY-MM-DD if readable), place, short note.
-- patient.name: as written on the paper, or "" if it is not there.
-- patient.dateOfBirth: only if the full date of birth is written, as YYYY-MM-DD. If only a year or an age is written, leave it out.
-- patient.sex: "F" or "M", only if written on the paper. Never guess it from the name.
-- patient.bloodType: only if written.
+- referrals: referrals or follow-up appointments written on the paper (e.g. "see an eye doctor for a regular check-up" -> to "Ophthalmology", reason "Regular check-up"), status "open" unless the paper says it was done.
+- visits: only if the paper records a dated visit or admission: date (YYYY-MM-DD), place, short note.
 
 LANGUAGE
 - Papers may be in Arabic, English or French. Write every field value in English, except "raw", which stays in the original language and script.
 
-SEVERAL PAPERS
-- When you get more than one image, merge them into ONE record. List each medication once.
-- If two papers disagree about the same drug (different strength or frequency), keep both entries and mark both "yellow".
-
-FIXED VALUES
-- Every "verified" field is "patient". "updated" is the date given in the user message.
-
 OUTPUT
 Reply with ONLY one JSON object, no other text, in exactly this shape:
 {
-  "patient": { "name": "", "dateOfBirth": "1962-04-18", "sex": "F", "bloodType": "A+" },
+  "patient": { "name": "", "dateOfBirth": "1962-04-18", "ageWritten": "64", "sex": "F", "bloodType": "A+" },
   "emergency": { "allergies": [], "critical": [] },
-  "conditions": [ { "name": "", "verified": "patient" } ],
-  "meds": [ { "raw": "", "name": "", "ingredient": "", "strength": "", "frequency": "", "status": "green", "verified": "patient" } ],
+  "conditions": [ { "name": "" } ],
+  "meds": [ { "raw": "", "name": "", "ingredient": "", "strength": "", "frequency": "", "status": "green" } ],
   "referrals": [ { "to": "", "reason": "", "status": "open" } ],
-  "visits": [ { "date": "", "place": "", "note": "" } ],
-  "updated": "YYYY-MM-DD"
+  "visits": [ { "date": "", "place": "", "note": "" } ]
 }
-Arrays may be empty. Do not add "v", "id" or "cardVersion". Optional fields (dateOfBirth, sex, bloodType, ingredient, strength, frequency, reason) are left out when they are not on the paper.`;
+Arrays may be empty. Optional fields (dateOfBirth, ageWritten, sex, bloodType, ingredient, strength, frequency, reason) are left out when they are not on the paper.`;
