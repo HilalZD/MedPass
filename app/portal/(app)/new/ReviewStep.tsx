@@ -255,7 +255,7 @@ export function MedForm({
   const [m, setM] = useState<DraftMed>({ ...med, name: med.status === "unreadable" ? "" : med.name });
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border-2 border-blue-600 bg-white p-3">
+    <div className="flex flex-col gap-3 rounded-xl border-2 border-brand bg-white p-3">
       {med.raw && (
         <p className="text-lg">
           <span className="text-gray-600">Written on paper: </span>

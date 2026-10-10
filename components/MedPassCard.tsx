@@ -107,7 +107,7 @@ const SEX = { F: { ar: "أنثى", en: "Female" }, M: { ar: "ذكر", en: "Male"
 // ---------------------------------------------------------------------------
 
 // Stylised cedar (the tree on Lebanon's flag): trunk + four tiers.
-function Cedar({ size, color, opacity = 1 }: { size: string; color: string; opacity?: number }) {
+export function Cedar({ size, color, opacity = 1 }: { size: string; color: string; opacity?: number }) {
   return (
     <svg viewBox="0 0 100 110" style={{ width: size, height: size, opacity, display: "block" }} aria-hidden="true">
       <g fill={color}>

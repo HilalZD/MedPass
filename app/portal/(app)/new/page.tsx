@@ -42,7 +42,7 @@ export default function NewPatientPage() {
     <div className="flex flex-col gap-4">
       <ol className="flex gap-1" aria-label="Progress">
         {STEPS.map((s, i) => (
-          <li key={s} className={`h-2 flex-1 rounded-full ${i <= STEPS.indexOf(step) ? "bg-blue-700" : "bg-gray-200"}`} />
+          <li key={s} className={`h-2 flex-1 rounded-full ${i <= STEPS.indexOf(step) ? "bg-brand" : "bg-gray-200"}`} />
         ))}
       </ol>
 

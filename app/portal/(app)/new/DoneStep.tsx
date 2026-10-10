@@ -46,7 +46,7 @@ export default function DoneStep({ record, pin, onAnother }: { record: MedPassRe
 
   return (
     <section className="flex flex-col items-center gap-5 text-center">
-      <h1 className="text-2xl font-bold text-green-800">✓ Patient saved</h1>
+      <h1 className="text-2xl font-bold text-brand-dark">✓ Patient saved</h1>
       <p className="text-lg">{record.patient.name}</p>
       <div className="w-full rounded-2xl border-4 border-gray-900 p-5">
         <p className="text-lg text-gray-600">MedPass ID</p>
@@ -72,7 +72,7 @@ export default function DoneStep({ record, pin, onAnother }: { record: MedPassRe
       </button>
       <p className="rounded-xl bg-gray-100 p-4 text-lg">
         The patient can check who opened their record at{" "}
-        <a href="/me" target="_blank" rel="noopener" className="font-mono font-semibold text-blue-800 underline">
+        <a href="/me" target="_blank" rel="noopener" className="font-mono font-semibold text-brand-dark underline">
           /me
         </a>{" "}
         with their MedPass ID and PIN.

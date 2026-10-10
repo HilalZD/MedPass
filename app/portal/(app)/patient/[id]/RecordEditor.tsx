@@ -175,7 +175,7 @@ export default function RecordEditor({
               <span>
                 {ref.to}
                 {ref.reason && ` · ${ref.reason}`}{" "}
-                <span className={`rounded-full px-2 py-0.5 text-sm ${ref.status === "open" ? "bg-blue-100 text-blue-900" : "bg-gray-200"}`}>
+                <span className={`rounded-full px-2 py-0.5 text-sm ${ref.status === "open" ? "bg-brand-100 text-brand-dark" : "bg-gray-200"}`}>
                   {ref.status === "open" ? "Open" : "Done"}
                 </span>
               </span>
@@ -224,14 +224,14 @@ export default function RecordEditor({
       {(dirty || savedMsg || error) && (
         <div className="sticky bottom-0 flex flex-col gap-2 border-t-2 border-gray-200 bg-white py-3">
           {error && <ErrorBox>{error}</ErrorBox>}
-          {savedMsg && <p className="text-center text-lg font-semibold text-green-800">{savedMsg}</p>}
+          {savedMsg && <p className="text-center text-lg font-semibold text-brand-dark">{savedMsg}</p>}
           {unresolved > 0 && (
             <p className="text-center text-lg font-semibold text-yellow-800">
               {unresolved} medicine{unresolved === 1 ? "" : "s"} still to check
             </p>
           )}
           {changedFields.length > 0 && (
-            <div className="rounded-xl border-2 border-blue-500 bg-blue-50 p-3 text-lg">
+            <div className="rounded-xl border-2 border-brand bg-brand-50 p-3 text-lg">
               <p className="font-semibold">Check before saving. Patient details changed:</p>
               <ul className="flex flex-col gap-1">
                 {changedFields.map((f) => (
@@ -296,7 +296,7 @@ function Header({ record, cardVersion, until, onLock }: { record: MedPassRecord;
 
   return (
     <section className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-green-50 p-3 text-lg">
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-brand-50 p-3 text-lg">
         <span>
           🔓 Unlocked for{" "}
           <span className="font-mono font-semibold">
@@ -348,7 +348,7 @@ function PatientDetails({
   const [editing, setEditing] = useState(false);
   const badge = (key: PatientField) =>
     changed.some((c) => c.key === key) ? (
-      <span className="rounded-full bg-blue-100 px-2 py-0.5 text-sm font-semibold text-blue-900">Changed, not saved</span>
+      <span className="rounded-full bg-brand-100 px-2 py-0.5 text-sm font-semibold text-brand-dark">Changed, not saved</span>
     ) : (
       <VerifiedBadge v={verified.includes(key) ? "clinician" : "patient"} />
     );
@@ -525,7 +525,7 @@ function AddVisit({ facility, onAdd }: { facility: string; onAdd: (v: MedPassRec
   const [note, setNote] = useState("");
   return (
     <form
-      className="flex flex-col gap-2 rounded-xl border-2 border-blue-300 bg-blue-50 p-3"
+      className="flex flex-col gap-2 rounded-xl border-2 border-brand-100 bg-brand-50 p-3"
       onSubmit={(e) => {
         e.preventDefault();
         if (!note.trim()) return;

@@ -124,9 +124,9 @@ export default function CardPanel({
     (dirty && !canSave);
 
   return (
-    <section className="flex flex-col gap-4 rounded-xl border-2 border-blue-600 p-4">
+    <section className="flex flex-col gap-4 rounded-xl border-2 border-brand p-4">
       <h2 className="text-xl font-semibold">{mode === "update" ? "Print updated card" : "Reissue lost card"}</h2>
-      {dirty && <p className="text-lg font-semibold text-blue-900">Your unsaved changes will be saved first.</p>}
+      {dirty && <p className="text-lg font-semibold text-brand-dark">Your unsaved changes will be saved first.</p>}
       <p className="text-lg">
         This will be card {data.cardVersion + 1}. Card {data.cardVersion} and older will show &quot;This card was replaced&quot;
         when scanned online. They still work offline with the PIN.

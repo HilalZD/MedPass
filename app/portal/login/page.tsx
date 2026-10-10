@@ -4,6 +4,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Cedar } from "@/components/MedPassCard";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -39,12 +40,13 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col bg-white text-gray-900" style={{ colorScheme: "light" }}>
+    <div className="flex flex-1 flex-col text-ink">
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 p-6">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold">MedPass Portal</h1>
-        <p className="mt-1 text-lg text-gray-600">For approved clinicians</p>
-        <p className="text-lg text-gray-600" dir="rtl" lang="ar">
+      <div className="flex flex-col items-center text-center">
+        <Cedar size="3.5rem" color="#2b8a6e" />
+        <h1 className="mt-2 text-3xl font-bold text-ink">MedPass Portal</h1>
+        <p className="mt-1 text-lg text-muted">For approved clinicians</p>
+        <p className="text-lg text-muted" dir="rtl" lang="ar">
           للعاملين الصحيين المعتمدين
         </p>
       </div>
@@ -61,7 +63,7 @@ export default function LoginPage() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="rounded-xl border-2 border-gray-300 p-4 text-lg focus:border-blue-600 focus:outline-none"
+            className="rounded-2xl border-2 border-line bg-white p-4 text-lg focus:border-brand focus:outline-none"
           />
         </label>
 
@@ -76,7 +78,7 @@ export default function LoginPage() {
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="rounded-xl border-2 border-gray-300 p-4 text-lg focus:border-blue-600 focus:outline-none"
+            className="rounded-2xl border-2 border-line bg-white p-4 text-lg focus:border-brand focus:outline-none"
           />
         </label>
 
@@ -89,7 +91,7 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={loading}
-          className="rounded-xl bg-blue-700 p-4 text-xl font-semibold text-white disabled:opacity-60"
+          className="min-h-14 rounded-2xl bg-brand p-4 text-xl font-semibold text-white hover:bg-brand-dark disabled:opacity-60"
         >
           {loading ? "Logging in…" : "Log in · تسجيل الدخول"}
         </button>

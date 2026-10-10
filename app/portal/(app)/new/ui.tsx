@@ -6,15 +6,19 @@ import { useEffect, useMemo, useState } from "react";
 import { loadDrugs, normalize, type DrugRow } from "@/lib/match";
 import type { Status } from "@/lib/types";
 
+// MedPass look (see app/globals.css): big touch targets (at least 48 px high),
+// deep green for the main action, white with a soft green-grey border otherwise.
 export const btn = {
-  primary: "rounded-xl bg-blue-700 px-5 py-4 text-xl font-semibold text-white disabled:opacity-40",
-  secondary: "rounded-xl border-2 border-gray-300 bg-white px-4 py-3 text-lg font-semibold disabled:opacity-40",
-  small: "rounded-lg border-2 border-gray-300 bg-white px-3 py-2 text-base font-semibold",
-  danger: "rounded-lg border-2 border-red-300 bg-white px-3 py-2 text-base font-semibold text-red-800",
+  primary:
+    "min-h-14 rounded-2xl bg-brand px-5 py-4 text-xl font-semibold text-white transition-colors hover:bg-brand-dark disabled:opacity-40",
+  secondary:
+    "min-h-12 rounded-2xl border-2 border-line bg-white px-4 py-3 text-lg font-semibold text-ink transition-colors hover:border-brand disabled:opacity-40",
+  small: "min-h-11 rounded-xl border-2 border-line bg-white px-3 py-2 text-base font-semibold text-ink hover:border-brand",
+  danger: "min-h-11 rounded-xl border-2 border-red-300 bg-white px-3 py-2 text-base font-semibold text-red-800",
 };
 
 export const input =
-  "w-full rounded-xl border-2 border-gray-300 p-3 text-lg focus:border-blue-600 focus:outline-none";
+  "w-full rounded-2xl border-2 border-line bg-white p-3 text-lg text-ink focus:border-brand focus:outline-none";
 
 export const statusStyle: Record<Status, string> = {
   green: "border-green-600 bg-green-50",
@@ -114,12 +118,12 @@ export function DrugNameInput({
         onBlur={() => setTimeout(() => setOpen(false), 150)}
       />
       {open && options.length > 0 && (
-        <ul className="absolute z-10 mt-1 max-h-72 w-full overflow-y-auto rounded-xl border-2 border-gray-300 bg-white shadow-lg">
+        <ul className="absolute z-10 mt-1 max-h-72 w-full overflow-y-auto rounded-xl border-2 border-line bg-white shadow-lg">
           {options.map((d) => (
             <li key={d.id}>
               <button
                 type="button"
-                className="w-full px-3 py-3 text-start text-lg hover:bg-blue-50"
+                className="w-full px-3 py-3 text-start text-lg hover:bg-brand-50"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => {
                   onPick(d);

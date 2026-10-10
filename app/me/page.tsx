@@ -5,14 +5,15 @@
 // The session is a 10-minute httpOnly cookie; this page never sees the PIN after sending it.
 
 import { useCallback, useEffect, useState } from "react";
+import { Logo } from "@/components/Brand";
 import type { MedPassRecord, Verified } from "@/lib/types";
 
 type LogEntry = { at: string; action: string; facility: string | null; clinician: string | null };
 type Payload = { record: MedPassRecord; cardVersion: number; unlockedUntil: number; log: LogEntry[] };
 
-const btnPrimary = "rounded-2xl bg-blue-700 px-5 py-4 text-xl font-semibold text-white disabled:opacity-40";
-const btnSecondary = "rounded-2xl border-2 border-gray-300 bg-white px-4 py-3 text-lg font-semibold";
-const inputCls = "w-full rounded-2xl border-2 border-gray-300 p-4 text-2xl focus:border-blue-600 focus:outline-none";
+const btnPrimary = "min-h-14 rounded-2xl bg-brand px-5 py-4 text-xl font-semibold text-white hover:bg-brand-dark disabled:opacity-40";
+const btnSecondary = "min-h-12 rounded-2xl border-2 border-line bg-white px-4 py-3 text-lg font-semibold hover:border-brand";
+const inputCls = "w-full rounded-2xl border-2 border-line bg-white p-4 text-2xl focus:border-brand focus:outline-none";
 
 export default function MePage() {
   const [data, setData] = useState<Payload | null>(null);
@@ -35,10 +36,10 @@ export default function MePage() {
   // Always light: big dark-on-white text is easiest to read on cheap phones in
   // sunlight, and the boxes were designed for it (even if the phone is in dark mode).
   return (
-    <div className="flex flex-1 flex-col bg-white text-gray-900" style={{ colorScheme: "light" }}>
+    <div className="flex flex-1 flex-col text-ink">
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 p-4">
-      <header className="flex flex-col items-center gap-1 pt-2 text-center">
-        <p className="text-2xl font-bold text-green-800">MedPass</p>
+      <header className="flex flex-col items-center gap-2 pt-2 text-center">
+        <Logo subtitle="My record · ملفي" />
         <h1 className="text-xl font-semibold">
           My medical record · <span lang="ar">ملفي الطبي</span>
         </h1>
@@ -255,7 +256,7 @@ function Countdown({ until, onLock }: { until: number; onLock: () => void }) {
   const ss = left === null ? 0 : Math.max(0, Math.floor((left % 60000) / 1000));
 
   return (
-    <div className="flex items-center justify-between gap-2 rounded-2xl bg-green-50 p-3 text-lg">
+    <div className="flex items-center justify-between gap-2 rounded-2xl bg-brand-50 p-3 text-lg">
       <span>
         🔓 Open for{" "}
         <span className="font-mono font-semibold">

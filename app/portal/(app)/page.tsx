@@ -9,7 +9,7 @@ export default function PortalHome() {
       <Lookup />
       <Link
         href="/portal/new"
-        className="rounded-xl border-2 border-blue-700 bg-white px-5 py-5 text-center text-xl font-semibold text-blue-800"
+        className="rounded-xl border-2 border-brand bg-white px-5 py-5 text-center text-xl font-semibold text-brand-dark"
       >
         + New patient · مريض جديد
       </Link>

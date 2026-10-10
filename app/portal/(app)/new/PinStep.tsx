@@ -84,7 +84,7 @@ export default function PinStep({
       {pinInput(again, setAgain, "Type the same PIN again")}
       {mismatch && <ErrorBox>The two PINs are not the same. Please type them again.</ErrorBox>}
 
-      <div className="rounded-xl border-2 border-blue-300 bg-blue-50 p-4 text-lg">
+      <div className="rounded-xl border-2 border-brand-100 bg-brand-50 p-4 text-lg">
         <p>Remember this PIN. Nobody, not even the hospital, can recover it from your card.</p>
         <p dir="rtl" lang="ar" className="mt-2">
           احفظ هذا الرمز. لا أحد، ولا حتى المستشفى، يستطيع استرجاعه من بطاقتك.
