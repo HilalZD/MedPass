@@ -14,6 +14,7 @@ import PinPad from "./PinPad";
 import QrReader from "./QrReader";
 import RecordView from "./RecordView";
 import { T, type Lang } from "./strings";
+import DemoHint from "@/components/DemoHint"; // demo mode only (added for Phase 6 demo)
 
 type Stage =
   | { kind: "scan" }
@@ -95,6 +96,7 @@ export default function ScanPage() {
             <h2 className="text-xl font-bold">{t.title}</h2>
             <p className="text-lg text-gray-700">{t.hint}</p>
           </div>
+          <DemoHint />
           <QrReader key={scanKey} onText={onText} t={t} />
         </>
       )}

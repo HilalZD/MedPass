@@ -77,6 +77,34 @@ export async function loadClinician(userId: string): Promise<Clinician | null> {
   };
 }
 
+// Log a clinician in (sets the login cookie). Used by the normal login form and
+// by the demo buttons, so both go through exactly the same checks.
+export async function signInClinician(email: string, password: string): Promise<Response> {
+  const supabase = await authClient();
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error || !data.user) {
+    // Same message for "no such user" and "wrong password", so nobody can
+    // find out which emails have accounts.
+    const tooMany = error?.status === 429;
+    return Response.json(
+      { error: tooMany ? "Too many tries. Please wait a few minutes." : "Wrong email or password." },
+      { status: tooMany ? 429 : 401 },
+    );
+  }
+
+  // A valid login is not enough: the account must be linked to a facility
+  // by an admin (the clinicians table). Otherwise log it straight out again.
+  const clinician = await loadClinician(data.user.id);
+  if (!clinician) {
+    await supabase.auth.signOut();
+    return Response.json(
+      { error: "This account is not approved for the portal yet. Ask your administrator." },
+      { status: 403 },
+    );
+  }
+  return Response.json({ ok: true });
+}
+
 // For API routes under /api/portal. Use it as the FIRST line:
 //   const clinician = await requireClinician();
 //   if (clinician instanceof Response) return clinician;

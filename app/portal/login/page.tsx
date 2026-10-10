@@ -5,6 +5,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Cedar } from "@/components/MedPassCard";
+import { DEMO_MODE } from "@/lib/demo";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -13,15 +14,22 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function onSubmit(e: React.FormEvent) {
+  function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    login("/api/auth/login", { email, password });
+  }
+
+  // Demo buttons send only WHICH demo user; the server holds the credentials.
+  const demoLogin = (who: "nurse" | "doctor") => login("/api/auth/demo-login", { who });
+
+  async function login(url: string, body: object) {
     setError("");
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/login", {
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(body),
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
@@ -96,6 +104,28 @@ export default function LoginPage() {
           {loading ? "Logging in…" : "Log in · تسجيل الدخول"}
         </button>
       </form>
+
+      {DEMO_MODE && (
+        <section className="flex flex-col gap-3 rounded-2xl border-2 border-dashed border-amber-400 bg-amber-50 p-4">
+          <p className="text-center text-base font-semibold text-amber-950">For judges: one tap, fictional demo accounts</p>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => demoLogin("nurse")}
+            className="min-h-14 rounded-2xl border-2 border-brand bg-white px-4 text-lg font-semibold text-brand-dark hover:bg-brand-50 disabled:opacity-60"
+          >
+            Demo: Nurse Rana (Tyre)
+          </button>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => demoLogin("doctor")}
+            className="min-h-14 rounded-2xl border-2 border-brand bg-white px-4 text-lg font-semibold text-brand-dark hover:bg-brand-50 disabled:opacity-60"
+          >
+            Demo: Dr. Karim (Beirut)
+          </button>
+        </section>
+      )}
     </main>
     </div>
   );

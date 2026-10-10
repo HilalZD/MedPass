@@ -6,6 +6,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Logo } from "@/components/Brand";
+import DemoHint from "@/components/DemoHint";
 import type { MedPassRecord, Verified } from "@/lib/types";
 
 type LogEntry = { at: string; action: string; facility: string | null; clinician: string | null };
@@ -87,6 +88,8 @@ function Login({ onOpen }: { onOpen: (d: Payload) => void }) {
           شاهد ملفك ومن فتحه.
         </span>
       </p>
+
+      <DemoHint />
 
       <label className="flex flex-col gap-2 text-lg font-medium">
         <span>
