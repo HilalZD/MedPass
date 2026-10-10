@@ -29,7 +29,19 @@ export type MedMatch = { drug: DrugRow; confidence: "high" | "low" };
 export type Matcher = {
   matchMed: (med: Med) => MedMatch | null;
   alternatives: (drug: DrugRow) => DrugRow[];
+  /** "Did you mean...?" candidates for an unreadable line. Suggestions only: never sets drugId or status. */
+  suggest: (rawText: string, n?: number) => DrugRow[];
 };
+
+const SUGGEST_FUZZY_THRESHOLD = 0.3; // a bit looser than matchMed: a human picks from the list
+// Dose / frequency words removed before looking for the brand-like word.
+const NOT_BRAND = new Set(
+  "mg mcg g ml iu units unit tab tabs cap caps daily hs bid tid od x at bedtime before after meals".split(" "),
+);
+// Insulin products (ATC A10A): on a prescription "18 units" is the dose, not the product strength.
+const isInsulin = (d: DrugRow) => (d.atc ?? "").startsWith("A10A");
+const looksLikeDose = (strength: string | undefined) =>
+  !!strength && /\b(u|units?|iu|ui)\b/i.test(strength) && !/\/\s*ml/i.test(strength);
 
 const FUZZY_THRESHOLD = 0.2; // Fuse score: 0 = perfect, 1 = anything. Strict on purpose.
 const MAX_ALTERNATIVES = 5;
@@ -122,6 +134,12 @@ export function createMatcher(drugs: DrugRow[]): Matcher {
     const distinctStrengths = new Set(rows.map((r) => strengthNumbers(r.strength).join("/"))).size;
     const brandIsSure = found.how !== "fuzzy";
 
+    if (rows.some(isInsulin) && looksLikeDose(med.strength)) {
+      // "Lantus 18 units": 18 is the patient's dose. Match on the brand alone.
+      const single = distinctStrengths === 1 && distinctBrands(rows) === 1;
+      return { drug: rows[0], confidence: single && brandIsSure ? "high" : "low" };
+    }
+
     if (sameStrength.length && distinctBrands(sameStrength) === 1) {
       return { drug: sameStrength[0], confidence: brandIsSure ? "high" : "low" };
     }
@@ -150,7 +168,82 @@ export function createMatcher(drugs: DrugRow[]): Matcher {
     return [...cheapestPerBrand.values()].sort((a, b) => a.price - b.price).slice(0, MAX_ALTERNATIVES);
   }
 
-  return { matchMed, alternatives };
+  // --- suggest(): "Did you mean...?" for unreadable lines --------------------
+  // Index brands by their first word ("panadol advance" -> "panadol").
+  const byFirstWord = new Map<string, string[]>();
+  for (const b of brands) {
+    const first = b.split(" ")[0];
+    if (!byFirstWord.has(first)) byFirstWord.set(first, []);
+    byFirstWord.get(first)!.push(b);
+  }
+  const firstWords = [...byFirstWord.keys()];
+  const firstWordFuse = new Fuse(firstWords, { includeScore: true, threshold: SUGGEST_FUZZY_THRESHOLD, ignoreLocation: true });
+
+  /**
+   * "?anadol500 عند اللزوم" -> PANADOL ... 500mg. The AI writes "?" for a letter it
+   * could not read. Steps: drop numbering, Arabic and dose/frequency words, take
+   * the first word with 3+ letters as the brand, match "?" as any one letter
+   * (then fuzzy without the "?"), and prefer rows whose strength matches.
+   * Returns [] when nothing is close: never a guess just to fill the list.
+   */
+  function suggest(rawText: string, n = 3): DrugRow[] {
+    let text = rawText
+      .replace(/^\s*\d+\s*[.)]\s*/, "") // "3. " / "3) "
+      .replace(/[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]+/g, " ") // Arabic
+      .replace(/\d+\s*[x×]\s*\d+/gi, " ") // "1x1" frequency
+      .replace(/\b\d+\s*(tabs?|caps?)\b/gi, " "); // "1 tab"
+    text = text.replace(/([a-z?])(\d)/gi, "$1 $2").replace(/(\d)([a-z?])/gi, "$1 $2"); // "?anadol500" -> "?anadol 500"
+
+    const words = text.toLowerCase().split(/[^a-z0-9?.]+/).map((w) => w.replace(/^\.+|\.+$/g, "")).filter(Boolean);
+    const brandWord = words.find((w) => !NOT_BRAND.has(w) && (w.match(/[a-z]/g) ?? []).length >= 3);
+    if (!brandWord) return [];
+    const wanted = strengthNumbers(words.filter((w) => /^\d/.test(w)).join(" "));
+
+    // Candidate brands with a rank: wildcard / exact first word = 0, fuzzy = 1 + score.
+    const rank = new Map<string, number>();
+    const pattern = new RegExp(`^${brandWord.replace(/[.*+^${}()|[\]\\]/g, "\\$&").replace(/\?/g, "[a-z]")}$`);
+    for (const w of firstWords) if (pattern.test(w)) for (const b of byFirstWord.get(w)!) rank.set(b, 0);
+    const plain = brandWord.replace(/\?/g, "");
+    const firstLetter = /^[a-z]/.test(brandWord) ? brandWord[0] : ""; // a clearly read first letter
+    if (plain.length >= 3) {
+      for (const hit of firstWordFuse.search(plain)) {
+        const score = hit.score ?? 1;
+        // Similar length only (a "?" stands for one letter): "lytor" must not become a much longer name.
+        if (score > SUGGEST_FUZZY_THRESHOLD || Math.abs(hit.item.length - brandWord.length) > 2) continue;
+        // Keep a first letter that was read clearly: "Ly?tor" must not become "GLYSTOR".
+        if (firstLetter && hit.item[0] !== firstLetter) continue;
+        for (const b of byFirstWord.get(hit.item)!) if (!rank.has(b)) rank.set(b, 1 + score);
+      }
+    }
+    if (!rank.size) return [];
+
+    const strengthRank = (d: DrugRow) => {
+      const nums = strengthNumbers(d.strength);
+      if (wanted.length && sameNumbers(nums, wanted)) return 0;
+      if (wanted.length && nums[0] === wanted[0]) return 1;
+      return 2;
+    };
+    const rows = [...rank.keys()].flatMap((b) => byBrand.get(b)!);
+    rows.sort(
+      (a, b) =>
+        rank.get(normalize(a.brand))! - rank.get(normalize(b.brand))! ||
+        strengthRank(a) - strengthRank(b) ||
+        normalize(a.brand).split(" ").length - normalize(b.brand).split(" ").length || // plainest name first
+        a.price - b.price,
+    );
+    const seen = new Set<string>();
+    const out: DrugRow[] = [];
+    for (const d of rows) {
+      const key = `${normalize(d.brand)}|${strengthNumbers(d.strength).join("/")}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(d);
+      if (out.length >= n) break;
+    }
+    return out;
+  }
+
+  return { matchMed, alternatives, suggest };
 }
 
 function closestByStrength(rows: DrugRow[], wanted: number[]): DrugRow {

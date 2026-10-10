@@ -9,7 +9,7 @@ import type { Med, MedPassRecord } from "../lib/types";
 
 const drugs = JSON.parse(readFileSync("public/drugs.json", "utf8")) as DrugRow[];
 const fixture = JSON.parse(readFileSync("fixtures/sample-record.json", "utf8")) as MedPassRecord;
-const { matchMed, alternatives } = createMatcher(drugs);
+const { matchMed, alternatives, suggest } = createMatcher(drugs);
 
 let failures = 0;
 const med = (name: string, strength?: string): Med => ({ name, strength, status: "green", verified: "patient" });
@@ -38,6 +38,33 @@ expect("Lantus 18 IU", matchMed(med("Lantus", "18 IU")), "high", "LANTUS");
 expect("Glucophage 850mg in name", matchMed(med("Glucophage 850mg")), "high", "GLUCOPHAGE");
 expect("Concor 7 mg (no such)", matchMed(med("Concor", "7 mg")), "low");
 expect("Xyzzyqq (nonsense)", matchMed(med("Xyzzyqq", "10mg")), null);
+
+console.log("\n== insulin: the number on the paper is a dose ==");
+expect("Lantus 18 units", matchMed(med("Lantus", "18 units")), "high", "LANTUS");
+expect("Lantus 18 IU", matchMed(med("Lantus", "18 IU")), "high", "LANTUS");
+expect("Humalog 10 units", matchMed(med("Humalog", "10 units")), "high", "HUMALOG");
+
+console.log("\n== suggest() for unreadable lines ==");
+const fmt = (rows: DrugRow[]) => (rows.length ? rows.map((r) => `${r.brand} ${r.strength || "-"}`).join("  |  ") : "[]");
+function expectSuggest(raw: string, ok: (rows: DrugRow[]) => boolean, rule: string) {
+  const rows = suggest(raw);
+  const pass = ok(rows);
+  if (!pass) failures++;
+  console.log(`${pass ? "PASS" : "FAIL"}  ${JSON.stringify(raw).padEnd(40)} -> ${fmt(rows)}   (${rule})`);
+}
+expectSuggest("?anadol500 عند اللزوم", (r) => r[0]?.brand.startsWith("PANADOL") && r[0].strength === "500mg", "first is PANADOL 500mg");
+expectSuggest("Co?ersyl 5 1x1", (r) => r[0]?.brand.startsWith("COVERSYL") && r[0].strength === "5mg", "first is COVERSYL 5mg");
+expectSuggest("3. Ly?tor 20mg: 1 tab at bedtime", (r) => !r.some((d) => d.brand.includes("LIPITOR")), "must not claim LIPITOR");
+expectSuggest("xxxx", (r) => r.length === 0, "[]");
+expectSuggest("Glucophag 850", (r) => r[0]?.brand === "GLUCOPHAGE" && r[0].strength === "850mg", "typo, no ?: GLUCOPHAGE 850mg first");
+expectSuggest("1) عند اللزوم", (r) => r.length === 0, "no brand-like word -> []");
+expectSuggest("Co?ersyl 5 1x1", (r) => !r.some((d) => d.brand.startsWith("LOCERYL")), "no LOCERYL (different first letter)");
+expectSuggest("Panadl 500", (r) => r[0]?.brand.startsWith("PANADOL") && r[0].strength === "500mg", "typo without ?: PANADOL 500mg first");
+const before = med("Co?ersyl", "5");
+suggest("Co?ersyl 5 1x1");
+const untouched = before.status === "green" && before.drugId === undefined;
+if (!untouched) failures++;
+console.log(`${untouched ? "PASS" : "FAIL"}  suggest() never changes a med (no drugId, status unchanged)`);
 
 console.log("\n== alternatives (same ATC + strength + form family, cheapest first) ==");
 for (const [label, m] of [
