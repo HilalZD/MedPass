@@ -5,8 +5,11 @@ import { getMatcher } from "@/lib/db/drugs";
 import { SYSTEM_PROMPT, applyMatches, mergeDrafts, parsePaper, tagPaper, type ExtractedDraft } from "@/lib/extract";
 
 // Each paper is read in its own AI call, all at the same time, so the total
-// time is about the time of the slowest paper. Give the function 2 minutes on Vercel.
-export const maxDuration = 120;
+// time is about the time of the slowest paper (12–15 s in our tests).
+// Vercel stops the function after 60 s. Worst case per paper: 2 tries x 25 s
+// AI timeout (no extra SDK retry) = 50 s, so we always answer before that.
+export const maxDuration = 60;
+const AI_TIMEOUT_MS = 25_000;
 
 // Request body: { images: ["<base64 JPEG>", ...] }, 1 to 3 images.
 // A "data:image/jpeg;base64," prefix is allowed and removed.
@@ -97,7 +100,7 @@ export async function POST(request: Request) {
     return errorResponse("Please send 1 to 3 JPEG photos.", 400);
   }
 
-  const client = new Anthropic({ timeout: 55_000, maxRetries: 1 });
+  const client = new Anthropic({ timeout: AI_TIMEOUT_MS, maxRetries: 0 });
   const today = new Date().toISOString().slice(0, 10);
 
   // One call per paper, in parallel. Paper numbers are 1-based, in upload order.
