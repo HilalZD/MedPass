@@ -5,10 +5,11 @@ import { requireUnlock } from "@/lib/db/unlock";
 
 type Ctx = RouteContext<"/api/portal/patients/[id]/reissue">;
 
-// POST { cardVersion } → card_version + 1 and one "reissue" log entry.
-// Used by both "Print updated card" and "Reissue lost card". cardVersion is the
-// version the clinician is looking at, so two reissues at once can't clash.
-const bodySchema = z.object({ cardVersion: z.number().int().min(1) });
+// POST { cardVersion, reason } → card_version + 1 and one "reissue" log entry
+// with the reason: "update" (Save & print updated card) or "lost" (Reissue lost
+// card). cardVersion is the version the clinician is looking at, so two
+// reissues at once can't clash. The MedPass ID never changes.
+const bodySchema = z.object({ cardVersion: z.number().int().min(1), reason: z.enum(["lost", "update"]) });
 
 export async function POST(request: Request, ctx: Ctx) {
   const clinician = await requireClinician();
@@ -18,9 +19,9 @@ export async function POST(request: Request, ctx: Ctx) {
   const until = await requireUnlock(id, clinician);
   if (until instanceof Response) return until;
 
-  let cardVersion: number;
+  let body: z.infer<typeof bodySchema>;
   try {
-    cardVersion = bodySchema.parse(await request.json()).cardVersion;
+    body = bodySchema.parse(await request.json());
   } catch {
     return Response.json({ error: "Bad request." }, { status: 400 });
   }
@@ -28,7 +29,7 @@ export async function POST(request: Request, ctx: Ctx) {
   const row = await getPatient(id);
   if (!row) return Response.json({ error: "No patient with this MedPass ID." }, { status: 404 });
 
-  const reissued = row.card_version === cardVersion ? await reissueCard(row, clinician) : null;
+  const reissued = row.card_version === body.cardVersion ? await reissueCard(row, clinician, body.reason) : null;
   if (!reissued) {
     return Response.json({ error: "This card was just reissued by someone else. Reload the page." }, { status: 409 });
   }

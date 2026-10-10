@@ -1,14 +1,17 @@
 "use client";
 
-// "Print updated card" and "Reissue lost card".
-// Both: card-size check (fitRecord + meter + dropped-visits confirmation)
-// → card_version + 1 on the server ("reissue" log entry)
+// "Save & print updated card" and "Reissue lost card".
+// Both: unsaved changes are saved FIRST (nothing is printed if that fails)
+// → card-size check (fitRecord + meter + dropped-visits confirmation)
+// → card_version + 1 on the server ("reissue" log entry with the reason)
 // → encrypt with the PIN from memory → sessionStorage "medpass:print" → /print.
 // Only the encrypted payload goes to /print: never the record or the PIN.
+// The MedPass ID never changes; only the card version goes up.
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { encode, fitRecord } from "@/lib/card";
+import type { MedPassRecord } from "@/lib/types";
 import CardMeter, { cardIsFull } from "../../new/CardMeter";
 import { ErrorBox, btn } from "../../new/ui";
 import { PinGate, type Payload } from "./PatientView";
@@ -19,7 +22,10 @@ export default function CardPanel({
   id,
   data,
   setData,
+  record,
   dirty,
+  canSave,
+  save,
   pin,
   setPin,
   onLock,
@@ -27,7 +33,10 @@ export default function CardPanel({
   id: string;
   data: Payload;
   setData: (d: Payload) => void;
+  record: MedPassRecord; // the record as it will be printed (including unsaved changes)
   dirty: boolean;
+  canSave: boolean;
+  save: () => Promise<boolean>; // true only if the save worked
   pin: string | null;
   setPin: (p: string) => void;
   onLock: () => void;
@@ -39,14 +48,14 @@ export default function CardPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  // Size check on the card as it WILL be printed (next card version).
+  // Size check on the card as it WILL be printed (unsaved changes, next card version).
   const fit = useMemo(() => {
     try {
-      return fitRecord({ ...data.record, cardVersion: data.cardVersion + 1 });
+      return fitRecord({ ...record, cardVersion: data.cardVersion + 1 });
     } catch {
       return null;
     }
-  }, [data.record, data.cardVersion]);
+  }, [record, data.cardVersion]);
 
   const close = () => {
     setMode(null);
@@ -56,14 +65,21 @@ export default function CardPanel({
   };
 
   async function print() {
-    if (!pin) return;
+    if (!pin || !mode) return;
     setBusy(true);
     setError("");
     try {
+      // 1. Save first. If the save fails, stop: never print a card with unsaved data.
+      if (dirty && !(await save())) {
+        setError("The changes were not saved, so no card was printed. Fix the problem shown above and try again.");
+        setBusy(false);
+        return;
+      }
+      // 2. New card version (same MedPass ID), logged with the reason.
       const res = await fetch(`/api/portal/patients/${encodeURIComponent(id)}/reissue`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cardVersion: data.cardVersion }),
+        body: JSON.stringify({ cardVersion: data.cardVersion, reason: mode === "lost" ? "lost" : "update" }),
       });
       const body = await res.json();
       if (res.status === 403 && body.needPin) return onLock();
@@ -84,23 +100,29 @@ export default function CardPanel({
     return (
       <section className="flex flex-col gap-3 border-t-2 border-gray-200 pt-4">
         <h2 className="text-xl font-semibold">ID card</h2>
-        {dirty && <p className="text-lg text-yellow-900">Save your changes first, then print the updated card.</p>}
-        <button className={btn.primary} disabled={dirty} onClick={() => setMode("update")}>
-          Print updated card
+        {dirty && !canSave && <p className="text-lg text-yellow-900">Finish checking the record above before printing.</p>}
+        <button className={btn.primary} disabled={dirty && !canSave} onClick={() => setMode("update")}>
+          {dirty ? "Save & print updated card" : "Print updated card"}
         </button>
-        <button className={btn.secondary} disabled={dirty} onClick={() => setMode("lost")}>
-          Reissue lost card
+        <button className={btn.secondary} disabled={dirty && !canSave} onClick={() => setMode("lost")}>
+          {dirty ? "Save & reissue lost card" : "Reissue lost card"}
         </button>
       </section>
     );
   }
 
   const blocked =
-    !fit || cardIsFull(fit) || (fit.droppedVisits.length > 0 && !okDropped) || (mode === "lost" && !okLost) || !pin;
+    !fit ||
+    cardIsFull(fit) ||
+    (fit.droppedVisits.length > 0 && !okDropped) ||
+    (mode === "lost" && !okLost) ||
+    !pin ||
+    (dirty && !canSave);
 
   return (
     <section className="flex flex-col gap-4 rounded-xl border-2 border-blue-600 p-4">
       <h2 className="text-xl font-semibold">{mode === "update" ? "Print updated card" : "Reissue lost card"}</h2>
+      {dirty && <p className="text-lg font-semibold text-blue-900">Your unsaved changes will be saved first.</p>}
       <p className="text-lg">
         This will be card {data.cardVersion + 1}. Card {data.cardVersion} and older will show &quot;This card was replaced&quot;
         when scanned online. They still work offline with the PIN.
@@ -139,7 +161,7 @@ export default function CardPanel({
           Cancel
         </button>
         <button className={`${btn.primary} col-span-2`} disabled={blocked || busy} onClick={print}>
-          {busy ? "Preparing the card…" : "Print card"}
+          {busy ? "Preparing the card…" : dirty ? "Save & print card" : "Print card"}
         </button>
       </div>
     </section>

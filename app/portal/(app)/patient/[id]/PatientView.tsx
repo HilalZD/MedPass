@@ -11,12 +11,14 @@ import { ErrorBox, btn, input } from "../../new/ui";
 import RecordEditor from "./RecordEditor";
 
 export type PatientField = "name" | "dateOfBirth" | "sex" | "bloodType";
+export type ReissueReason = "lost" | "update";
 
 export type LogEntry = { at: string; action: string; facility: string | null; clinician: string | null };
 
 export type Payload = {
   record: MedPassRecord;
   cardVersion: number;
+  lastReissueReason: ReissueReason | null;
   updatedAt: string;
   verifiedFields: PatientField[]; // patient details a clinician has checked/changed
   unlockedUntil: number;
@@ -27,7 +29,7 @@ export type Payload = {
 type State =
   | { kind: "loading" }
   | { kind: "notFound"; message: string }
-  | { kind: "pin"; cardVersion: number | null }
+  | { kind: "pin"; cardVersion: number | null; reason: ReissueReason | null }
   | { kind: "open"; data: Payload }
   | { kind: "error"; message: string };
 
@@ -46,7 +48,7 @@ export default function PatientView({ id, scannedCardVersion }: { id: string; sc
         if (cancelled) return;
         if (res.ok) setState({ kind: "open", data });
         else if (res.status === 404) setState({ kind: "notFound", message: data.error });
-        else if (res.status === 403) setState({ kind: "pin", cardVersion: data.cardVersion ?? null });
+        else if (res.status === 403) setState({ kind: "pin", cardVersion: data.cardVersion ?? null, reason: data.lastReissueReason ?? null });
         else setState({ kind: "error", message: data.error ?? "Something went wrong." });
       } catch {
         if (!cancelled) setState({ kind: "error", message: "No internet connection. The hospital portal needs internet." });
@@ -59,7 +61,11 @@ export default function PatientView({ id, scannedCardVersion }: { id: string; sc
 
   const lock = useCallback(async () => {
     setPin(null);
-    setState((s) => ({ kind: "pin", cardVersion: s.kind === "open" ? s.data.cardVersion : null }));
+    setState((s) =>
+      s.kind === "open"
+        ? { kind: "pin", cardVersion: s.data.cardVersion, reason: s.data.lastReissueReason }
+        : { kind: "pin", cardVersion: null, reason: null },
+    );
     await fetch(`/api/portal/patients/${encodeURIComponent(id)}/unlock`, { method: "DELETE" }).catch(() => {});
   }, [id]);
 
@@ -76,13 +82,21 @@ export default function PatientView({ id, scannedCardVersion }: { id: string; sc
   }
 
   const dbCardVersion = state.kind === "open" ? state.data.cardVersion : state.cardVersion;
+  const reason = state.kind === "open" ? state.data.lastReissueReason : state.reason;
   const replaced = scannedCardVersion !== null && dbCardVersion !== null && scannedCardVersion < dbCardVersion;
+  // Why the scanned card is out of date, from the newest reissue's reason.
+  const replacedMessage =
+    reason === "lost"
+      ? "This card was replaced (reported lost)."
+      : reason === "update"
+        ? "A newer version of this card exists. Ask the patient for it."
+        : "This card was replaced. Ask the patient for their newest card.";
 
   return (
     <div className="flex flex-col gap-5">
       {replaced && (
         <p className="rounded-xl border-2 border-orange-500 bg-orange-50 p-4 text-lg font-semibold text-orange-900">
-          This card was replaced (card {scannedCardVersion}, newest is card {dbCardVersion}). Ask the patient for their newest card.
+          {replacedMessage} (Scanned card {scannedCardVersion}, newest is card {dbCardVersion}.)
         </p>
       )}
 

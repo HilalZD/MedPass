@@ -64,24 +64,36 @@ export default function RecordEditor({
   const changedFields = FIELDS.filter((f) => (w.patient[f.key] ?? "") !== (data.record.patient[f.key] ?? ""));
   const r = w;
 
-  async function save() {
+  // The working copy as a plain MedPassRecord (review notes removed).
+  const workingRecord: MedPassRecord = useMemo(
+    () => ({ ...w, meds: w.meds.map(({ note: _n, ...m }) => (void _n, m)) }),
+    [w],
+  );
+  const canSave = unresolved === 0 && w.patient.name.trim() !== "";
+
+  // Returns true only if the record was saved.
+  async function save(): Promise<boolean> {
     setSaving(true);
     setError("");
     try {
-      const record: MedPassRecord = { ...w, meds: w.meds.map(({ note: _n, ...m }) => (void _n, m)) };
       const res = await fetch(`/api/portal/patients/${encodeURIComponent(id)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ record, baseUpdatedAt: data.updatedAt }),
+        body: JSON.stringify({ record: workingRecord, baseUpdatedAt: data.updatedAt }),
       });
       const body = await res.json();
-      if (res.status === 403 && body.needPin) return onLock();
+      if (res.status === 403 && body.needPin) {
+        onLock();
+        return false;
+      }
       if (!res.ok) throw new Error(body.error ?? "Could not save.");
       setData(body);
       setSavedMsg("Saved ✓");
       setTimeout(() => setSavedMsg(""), 3000);
+      return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : "No internet connection.");
+      return false;
     } finally {
       setSaving(false);
     }
@@ -237,7 +249,7 @@ export default function RecordEditor({
               <button className={btn.secondary} onClick={() => setW(data.record)} disabled={saving}>
                 Undo all
               </button>
-              <button className={`${btn.primary} col-span-2`} disabled={saving || unresolved > 0 || !w.patient.name.trim()} onClick={save}>
+              <button className={`${btn.primary} col-span-2`} disabled={saving || !canSave} onClick={save}>
                 {saving ? "Saving…" : "Save changes"}
               </button>
             </div>
@@ -245,7 +257,18 @@ export default function RecordEditor({
         </div>
       )}
 
-      <CardPanel id={id} data={data} setData={setData} dirty={dirty} pin={pin} setPin={setPin} onLock={onLock} />
+      <CardPanel
+        id={id}
+        data={data}
+        setData={setData}
+        record={workingRecord}
+        dirty={dirty}
+        canSave={canSave}
+        save={save}
+        pin={pin}
+        setPin={setPin}
+        onLock={onLock}
+      />
 
       <AccessLog log={data.log} />
     </div>

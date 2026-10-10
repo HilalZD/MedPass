@@ -64,6 +64,13 @@ create table if not exists access_log (
   action       text not null check (action in ('create', 'view', 'edit', 'reissue', 'failed_pin'))
 );
 
+-- Why a new card was issued (reissue entries only): 'lost' or 'update'.
+-- Lets the portal say "reported lost" vs "a newer version exists" for old cards.
+alter table access_log add column if not exists reason text;
+alter table access_log drop constraint if exists access_log_reason_check;
+alter table access_log add constraint access_log_reason_check
+  check (reason is null or (action = 'reissue' and reason in ('lost', 'update')));
+
 -- Fast "latest entries for this patient" lookups for the access log screen.
 create index if not exists access_log_patient_at on access_log (patient_id, at desc);
 

@@ -38,7 +38,10 @@ export type AccessLogRow = {
   clinician_id: string | null;
   facility_id: string | null;
   action: AccessAction;
+  reason: ReissueReason | null; // only on "reissue" entries
 };
+
+export type ReissueReason = "lost" | "update";
 
 let client: SupabaseClient | null = null;
 
@@ -67,12 +70,14 @@ export async function logAccess(entry: {
   action: AccessAction;
   clinicianId?: string | null;
   facilityId?: string | null;
+  reason?: ReissueReason; // reissue only
 }): Promise<void> {
   const { error } = await db().from("access_log").insert({
     patient_id: entry.patientId,
     action: entry.action,
     clinician_id: entry.clinicianId ?? null,
     facility_id: entry.facilityId ?? null,
+    ...(entry.reason ? { reason: entry.reason } : {}),
   });
   // Never log the record itself, only that the write failed.
   if (error) throw new Error(`access_log insert failed: ${error.code}`);

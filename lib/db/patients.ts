@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import type { AccessAction, MedPassRecord } from "@/lib/types";
 import type { Clinician } from "./auth";
-import { db, logAccess, type PatientField, type PatientRow } from "./server";
+import { db, logAccess, type PatientField, type PatientRow, type ReissueReason } from "./server";
 
 // No 0/O, 1/I/L or U/V: easy to read aloud and to type from a printed card.
 // 29 characters ^ 8 positions ≈ 500 billion possible IDs.
@@ -175,7 +175,8 @@ export async function saveRecord(
 // New card: card_version + 1 (in the row AND inside the record). Old cards then
 // show "This card was replaced" when scanned online. Returns null if the card
 // version changed in between (someone else reissued at the same time).
-export async function reissueCard(row: PatientRow, clinician: Clinician): Promise<PatientRow | null> {
+// The MedPass ID never changes: only card_version goes up.
+export async function reissueCard(row: PatientRow, clinician: Clinician, reason: ReissueReason): Promise<PatientRow | null> {
   const next = row.card_version + 1;
   const { data, error } = await db()
     .from("patients")
@@ -186,8 +187,22 @@ export async function reissueCard(row: PatientRow, clinician: Clinician): Promis
     .maybeSingle<PatientRow>();
   if (error) throw new Error(`patients reissue failed: ${error.code}`);
   if (!data) return null;
-  await logAccess({ patientId: row.id, action: "reissue", clinicianId: clinician.userId, facilityId: clinician.facilityId });
+  await logAccess({ patientId: row.id, action: "reissue", clinicianId: clinician.userId, facilityId: clinician.facilityId, reason });
   return data;
+}
+
+// Why the newest card was issued ("lost" / "update"), or null if never reissued.
+// Used to explain why an older scanned card is out of date.
+export async function lastReissueReason(patientId: string): Promise<ReissueReason | null> {
+  const { data } = await db()
+    .from("access_log")
+    .select("reason")
+    .eq("patient_id", patientId)
+    .eq("action", "reissue")
+    .order("at", { ascending: false })
+    .limit(1)
+    .maybeSingle<{ reason: ReissueReason | null }>();
+  return data?.reason ?? null;
 }
 
 // What the portal page gets for an unlocked patient. NEVER includes pin_hash.
@@ -195,6 +210,7 @@ export async function portalPayload(row: PatientRow, unlockedUntil: number, clin
   return {
     record: row.record,
     cardVersion: row.card_version,
+    lastReissueReason: await lastReissueReason(row.id),
     updatedAt: row.updated_at,
     verifiedFields: row.verified_fields ?? [],
     unlockedUntil,
