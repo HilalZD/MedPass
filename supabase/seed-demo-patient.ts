@@ -1,5 +1,5 @@
 /**
- * Puts Hilal's card (fixtures/demo-record.json, MP-7K3Q-92XD, PIN 246810) into Supabase,
+ * Puts Hilal's card (fixtures/demo-record.json, MP-7K3Q-92XD, PIN from DEMO_CARD in lib/demo.ts) into Supabase,
  * so the printed demo card also works online (portal + /me).
  * Hilal's own card details (provided by Hilal). Safe to run again: it resets the patient's
  * record, PIN, lockout and card version, and adds a "create" log entry the first time.
@@ -19,9 +19,10 @@
 import { readFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 import bcrypt from "bcryptjs";
+import { DEMO_CARD } from "../lib/demo";
 import type { MedPassRecord } from "../lib/types";
 
-const PIN = "246810";
+const PIN = DEMO_CARD.pin; // one source of truth: lib/demo.ts (same as the demo hint and the printed QR)
 const TYRE_FACILITY = "11111111-1111-1111-1111-111111111111"; // seeded in schema.sql
 
 // The ONLY patient whose log --reset-log may delete. Not taken from the fixture

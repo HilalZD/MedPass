@@ -7,7 +7,8 @@
  *   npx tsx scripts/make-demo-card.ts
  * Then open out/demo-card.html in Chrome and print at 100% scale ("Actual size").
  *
- * Also checks the round trip: encode -> decode with PIN 246810 -> readEmergency.
+ * Also checks the round trip: encode -> decode with the demo PIN -> readEmergency.
+ * The PIN comes from DEMO_CARD in lib/demo.ts (the same one the demo hint shows).
  */
 
 import { deepStrictEqual } from "node:assert";
@@ -17,9 +18,10 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { CardBack, CardFront } from "../components/MedPassCard";
 import { decode, encode, fitRecord, readEmergency } from "../lib/card";
+import { DEMO_CARD } from "../lib/demo";
 import type { MedPassRecord } from "../lib/types";
 
-const PIN = "246810";
+const PIN = DEMO_CARD.pin; // one source of truth: lib/demo.ts
 const PHOTO = `data:image/jpeg;base64,${readFileSync("fixtures/demo-photo.jpg").toString("base64")}`;
 
 // Demo record, shared with supabase/seed-demo-patient.ts so the printed card
@@ -47,7 +49,7 @@ async function main() {
   } catch {
     same = false;
   }
-  check("decode with PIN 246810 gives back the same record", same);
+  check(`decode with PIN ${PIN} gives back the same record`, same);
 
   const em = readEmergency(payload);
   console.log("readEmergency():", JSON.stringify(em));
