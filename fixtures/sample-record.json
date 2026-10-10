@@ -1,0 +1,18 @@
+{
+  "v": 1,
+  "patient": { "name": "Fatima Haidar", "birthYear": 1962, "bloodType": "A+" },
+  "emergency": { "allergies": ["Penicillin"], "critical": ["Insulin-dependent diabetes"] },
+  "conditions": [
+    { "name": "Type 2 diabetes", "verified": "patient" },
+    { "name": "Hypertension", "verified": "patient" }
+  ],
+  "meds": [
+    { "name": "Glucophage", "ingredient": "Metformin", "strength": "850 mg", "frequency": "twice daily", "status": "green", "verified": "patient" },
+    { "name": "Concor", "ingredient": "Bisoprolol", "strength": "5 mg", "frequency": "once daily", "status": "green", "verified": "patient" },
+    { "name": "Lantus", "ingredient": "Insulin glargine", "strength": "18 IU", "frequency": "at bedtime", "status": "green", "verified": "patient" },
+    { "name": "Coversyl", "ingredient": "Perindopril", "strength": "5 mg", "frequency": "once daily", "status": "green", "verified": "patient" }
+  ],
+  "referrals": [{ "to": "Ophthalmology", "reason": "Routine diabetic eye check", "status": "open" }],
+  "visits": [{ "date": "2026-09-15", "place": "Tyre hospital", "note": "Discharged after hyperglycemia" }],
+  "updated": "2026-10-10"
+}
