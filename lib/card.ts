@@ -7,8 +7,10 @@
  *
  *   MP1:        version prefix, so future formats can be told apart.
  *   emLen       length of the emergency bytes, 2 bytes, big-endian.
- *   emergency   deflateRaw(JSON {name, allergies, critical}). NOT encrypted:
- *               a paramedic must read it without the PIN.
+ *   emergency   deflateRaw(JSON {id, cardVersion, name, dateOfBirth, bloodType,
+ *               allergies, critical}). NOT encrypted: a paramedic must read it
+ *               without the PIN, and the scanner needs id + cardVersion for the
+ *               "Open in hospital portal" button and the "card was replaced" check.
  *   salt, iv    random per card; needed to rebuild the key. Not secret.
  *   ciphertext  AES-GCM of deflateRaw(JSON of everything else, packed as arrays).
  *
@@ -73,7 +75,16 @@ function maxQrCharsFor(): number {
   return maxQrChars;
 }
 
-export type Emergency = { name: string; allergies: string[]; critical: string[] };
+/** The part of the card anyone can read without the PIN (unverified until decode() succeeds). */
+export type Emergency = {
+  id: string;
+  cardVersion: number;
+  name: string;
+  dateOfBirth?: string;
+  bloodType?: string;
+  allergies: string[];
+  critical: string[];
+};
 
 // ---------------------------------------------------------------------------
 // Validation (zod). The type check below makes the build fail if this schema
@@ -83,16 +94,23 @@ export type Emergency = { name: string; allergies: string[]; critical: string[] 
 const verifiedSchema = z.enum(["patient", "clinician"]);
 
 const emergencySchema = z.object({
+  id: z.string(),
+  cardVersion: z.number().int(),
   name: z.string(),
+  dateOfBirth: z.string().optional(),
+  bloodType: z.string().optional(),
   allergies: z.array(z.string()),
   critical: z.array(z.string()),
 });
 
 const recordSchema = z.object({
-  v: z.literal(1),
+  v: z.literal(2),
+  id: z.string().min(1),
+  cardVersion: z.number().int().min(1),
   patient: z.object({
     name: z.string(),
-    birthYear: z.number().int().optional(),
+    dateOfBirth: z.string().optional(),
+    sex: z.enum(["F", "M"]).optional(),
     bloodType: z.string().optional(),
   }),
   emergency: z.object({ allergies: z.array(z.string()), critical: z.array(z.string()) }),
@@ -132,9 +150,10 @@ const STATUS = ["green", "yellow", "unreadable"] as const;
 const REFERRAL = ["open", "done"] as const;
 
 type Opt<T> = T | null;
+// id, cardVersion, name, dateOfBirth and bloodType live in the plaintext
+// (emergency) part, so they are not repeated here.
 type Packed = [
-  birthYear: Opt<number>,
-  bloodType: Opt<string>,
+  sex: Opt<"F" | "M">,
   conditions: [name: string, verified: number][],
   meds: [
     name: string,
@@ -159,8 +178,7 @@ function compact<T extends object>(obj: T): T {
 
 function pack(rec: MedPassRecord): Packed {
   return [
-    orNull(rec.patient.birthYear),
-    orNull(rec.patient.bloodType),
+    orNull(rec.patient.sex),
     rec.conditions.map((c) => [c.name, VERIFIED.indexOf(c.verified)]),
     // `raw` (the exact paper text) is deliberately left out: it is only for the review screen.
     rec.meds.map((m) => [
@@ -179,10 +197,12 @@ function pack(rec: MedPassRecord): Packed {
 }
 
 function unpack(p: Packed, em: Emergency): unknown {
-  const [birthYear, bloodType, conditions, meds, referrals, visits, updated] = p;
+  const [sex, conditions, meds, referrals, visits, updated] = p;
   return {
-    v: 1,
-    patient: compact({ name: em.name, birthYear, bloodType }),
+    v: 2,
+    id: em.id,
+    cardVersion: em.cardVersion,
+    patient: compact({ name: em.name, dateOfBirth: em.dateOfBirth, sex, bloodType: em.bloodType }),
     emergency: { allergies: em.allergies, critical: em.critical },
     conditions: conditions.map(([name, v]) => ({ name, verified: VERIFIED[v] })),
     meds: meds.map(([name, ingredient, strength, frequency, drugId, s, v]) =>
@@ -338,7 +358,17 @@ function parseEmergency(bytes: Uint8Array): Emergency {
 
 /** The two byte strings that go on a card: plaintext emergency + (unencrypted) secret part. */
 function serialize(rec: MedPassRecord): { emergency: Uint8Array; plaintext: Uint8Array } {
-  const emergency = squeeze({ name: rec.patient.name, ...rec.emergency } satisfies Emergency);
+  const emergency = squeeze(
+    compact({
+      id: rec.id,
+      cardVersion: rec.cardVersion,
+      name: rec.patient.name,
+      dateOfBirth: rec.patient.dateOfBirth,
+      bloodType: rec.patient.bloodType,
+      allergies: rec.emergency.allergies,
+      critical: rec.emergency.critical,
+    }) satisfies Emergency,
+  );
   if (emergency.length > 0xffff) throw new Error(CARD_FULL);
   return { emergency, plaintext: squeeze(pack(rec)) };
 }
@@ -471,8 +501,10 @@ export async function decode(payload: string, pin: string): Promise<MedPassRecor
 }
 
 /**
- * Read the name + emergency info with no PIN. Note: this part is readable by
- * anyone and is only proven untampered once decode() succeeds with the PIN.
+ * Read the card's public part with no PIN: MedPass ID, card version, name,
+ * date of birth, blood type, allergies, critical conditions.
+ * Note: anyone can read (or forge) this part. It is only proven untampered
+ * once decode() succeeds with the PIN, so show it as "Not yet verified".
  */
 export function readEmergency(payload: string): Emergency {
   return parseEmergency(splitPayload(payload).emergency);

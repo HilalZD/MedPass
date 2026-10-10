@@ -97,27 +97,42 @@ async function main() {
   const wrong = await throwsMessage(() => decode(payload, "654321"));
   check('2. wrong PIN throws "Wrong PIN"', wrong === "Wrong PIN", `got: ${wrong}`);
 
-  // 3. Tamper with the plaintext part: drop the penicillin allergy, keep salt/iv/ciphertext.
+  // 3. Tamper with the plaintext part, keep salt/iv/ciphertext.
   const bytes = fromBase45(payload.slice("MP1:".length));
   const emLen = (bytes[0] << 8) | bytes[1];
-  const forged = deflateRaw(
-    JSON.stringify({ name: fixture.patient.name, allergies: [], critical: fixture.emergency.critical }),
-  );
-  const tamperedBytes = new Uint8Array([forged.length >> 8, forged.length & 0xff, ...forged, ...bytes.slice(2 + emLen)]);
-  const tampered = "MP1:" + toBase45(tamperedBytes);
+  const realEmergency = readEmergency(payload);
+  const forge = (changes: object) => {
+    const forged = deflateRaw(JSON.stringify({ ...realEmergency, ...changes }));
+    return "MP1:" + toBase45(new Uint8Array([forged.length >> 8, forged.length & 0xff, ...forged, ...bytes.slice(2 + emLen)]));
+  };
+  // 3a. Drop the penicillin allergy.
+  const tampered = forge({ allergies: [] });
   const tamperErr = await throwsMessage(() => decode(tampered, PIN));
   check("3. tampered allergy makes decode throw", tamperErr !== null, `got: ${tamperErr}`);
   check("3b. ...but readEmergency shows the forged (unverified) text", readEmergency(tampered).allergies.length === 0);
+  // 3c. Pretend an old card is the newest one.
+  const versionErr = await throwsMessage(() => decode(forge({ cardVersion: fixture.cardVersion + 1 }), PIN));
+  check("3c. tampered cardVersion makes decode throw", versionErr !== null, `got: ${versionErr}`);
 
-  // 4. Emergency info without PIN.
+  // 4. Public part without PIN: all 7 fields.
   const em = readEmergency(payload);
-  check(
-    "4. readEmergency works without PIN",
-    em.name === fixture.patient.name &&
-      JSON.stringify(em.allergies) === JSON.stringify(fixture.emergency.allergies) &&
-      JSON.stringify(em.critical) === JSON.stringify(fixture.emergency.critical),
-    JSON.stringify(em),
-  );
+  const expected = {
+    id: fixture.id,
+    cardVersion: fixture.cardVersion,
+    name: fixture.patient.name,
+    dateOfBirth: fixture.patient.dateOfBirth,
+    bloodType: fixture.patient.bloodType,
+    allergies: fixture.emergency.allergies,
+    critical: fixture.emergency.critical,
+  };
+  let emEqual = true;
+  try {
+    deepStrictEqual(em, expected);
+  } catch {
+    emEqual = false;
+  }
+  check("4. readEmergency returns id, cardVersion, name, dateOfBirth, bloodType, allergies, critical", emEqual, JSON.stringify(em));
+  check("4b. sex is NOT in the public part (stays encrypted)", !("sex" in em));
 
   // 5. Size of the sample card, and QR alphanumeric mode.
   checkAlphanumeric("5", payload);
