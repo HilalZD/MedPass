@@ -16,7 +16,11 @@ Steps:
      Anything uncertain goes to data/review-aman.csv instead. Never guess.
   3. Generic-named drugs: a brand still without ingredient that contains a known
      AMAN ingredient (5+ letters) as a whole word gets that ingredient.
-  4. Curated list (data/ingredients-curated.csv): ONLY rows a human marked
+  4. MoPH website snapshot (data/moph-web-*.json, made by scripts/scrape-moph.py):
+     each price-list row is joined to MoPH web rows by brand + strength (form only
+     breaks ties). Only an unambiguous match is used. It gives the official
+     ingredient names and the ATC code. This script never calls the network.
+  5. Curated list (data/ingredients-curated.csv): ONLY rows a human marked
      verified = "yes" are used.
      - brand rows: a drug matches when its brand's words start with the row's
        brand words ("Concor" matches "CONCOR 5mg" and "CONCOR COR"). The longest
@@ -25,6 +29,11 @@ Steps:
        Only fills drugs that have no ingredient yet; disagreements are printed.
      - alias rows (note = "alias"): fix spellings in every ingredient,
        e.g. oxaliplatine -> oxaliplatin.
+  6. Ingredient priority when sources disagree:
+     MoPH website > AMAN > curated (verified) > generic-name rule. Conflicts are printed.
+
+drugs.json rows also get an "atc" field ("" if unknown). It is NOT in the Drug
+type in lib/types.ts yet (the team must agree on that first).
 
 Not used yet: data/moph-registered.xlsx.
 
@@ -36,6 +45,7 @@ Needs: pip install pandas xlrd openpyxl
 import csv
 import json
 import math
+import random
 import re
 import unicodedata
 from collections import Counter
@@ -49,6 +59,7 @@ AMAN = ROOT / "data" / "moph-aman.xlsx"
 OUT = ROOT / "public" / "drugs.json"
 REVIEW = ROOT / "data" / "review-aman.csv"
 CURATED = ROOT / "data" / "ingredients-curated.csv"
+MOPH_WEB = sorted((ROOT / "data").glob("moph-web-*.json"))  # newest snapshot last
 TYPES = ROOT / "lib" / "types.ts"
 
 # AMAN "Chemical Composition" values that are really brand/device names, not
@@ -214,6 +225,7 @@ def load_price_list() -> tuple[list[dict], dict, int]:
             "form": clean(row.get("Form")) or clean(row.get("Presentation")),
             "price": price,
             "covered": False,
+            "atc": "",  # extra field, drugs.json only (not in the Drug type yet)
         })
     return drugs, skipped, len(df)
 
@@ -276,9 +288,8 @@ def match_aman(drugs: list[dict], aman: list[dict]) -> tuple[list[dict], Counter
                 ingredient = "" if a["ingredient"] in NOT_INGREDIENTS else a["ingredient"]
                 for d in cands:
                     d["covered"] = True
-                    if ingredient and not d["ingredient"]:
-                        d["ingredient"] = ingredient
-                        d["_ingredient_from"] = "aman"
+                    if ingredient:
+                        d.setdefault("_cands", {})["aman"] = ingredient
         if reason:
             reasons[reason] += 1
             review.append({
@@ -310,13 +321,10 @@ def fill_generic_names(drugs: list[dict], aman: list[dict]) -> list[tuple[str, s
     patterns = [(ing, re.compile(rf"(?<![a-z]){re.escape(ing)}(?![a-z])")) for ing in known]
     filled = []
     for d in drugs:
-        if d["ingredient"]:
-            continue
         brand = ascii_lower(d["brand"])
         for ing, pat in patterns:
             if pat.search(brand):
-                d["ingredient"] = ing
-                d["_ingredient_from"] = "generic name"
+                d.setdefault("_cands", {})["generic name"] = ing
                 filled.append((d["brand"], ing))
                 break
     return filled
@@ -338,26 +346,117 @@ def apply_curated(drugs: list[dict]) -> dict:
     aliases = {clean(r["brand"]).lower(): clean(r["ingredient"]).lower() for r in verified if is_alias(r)}
     brand_rows = [(brand_words(r["brand"]), clean(r["ingredient"]).lower()) for r in verified if not is_alias(r)]
 
-    stats = {"applied": 0, "conflicts": [], "aliased": 0,
+    stats = {"applied": 0,
              "unverified": sum(1 for r in rows if r["verified"].strip().lower() != "yes")}
     for d in drugs:
         dw = brand_words(d["brand"])
         matches = [(words, ing) for words, ing in brand_rows if words and dw[: len(words)] == words]
         if matches:
             ingredient = max(matches, key=lambda m: len(m[0]))[1]  # longest brand wins
-            if ingredient and not d["ingredient"]:
-                d["ingredient"] = ingredient
-                d["_ingredient_from"] = "curated"
+            if ingredient:
+                d.setdefault("_cands", {})["curated"] = ingredient
                 stats["applied"] += 1
-            elif ingredient and d["ingredient"] != ingredient:
-                stats["conflicts"].append((d["brand"], d["ingredient"], ingredient))
-        if d["ingredient"] and aliases:
-            parts = [aliases.get(p, p) for p in d["ingredient"].split(" + ")]
-            fixed = " + ".join(parts)
-            if fixed != d["ingredient"]:
-                d["ingredient"] = fixed
-                stats["aliased"] += 1
+    stats["aliases"] = aliases
     return stats
+
+
+# ---------------------------------------------------------------------------
+# Step 4: MoPH website snapshot (official ingredients + ATC)
+# ---------------------------------------------------------------------------
+
+def moph_ingredient(text: str) -> str:
+    """'Bisoprolol fumarate - 2.5mg, Amlodipine besylate - 5mg' -> 'bisoprolol fumarate + amlodipine besylate'.
+    Splits only on a comma followed by a letter, so '1,000mg' stays one amount."""
+    names = []
+    for part in re.split(r",\s*(?=[A-Za-z])", clean(text)):
+        name = re.sub(r"\s+", " ", part.split(" - ")[0]).strip().lower()
+        if name and name not in names:
+            names.append(name)
+    return " + ".join(names)
+
+
+def strength_numbers(text: str) -> tuple[float, ...]:
+    """All numbers in a strength, sorted, so '80/12.5 mg' == '12.5mg ... 80mg' and '1,000mg' == '1000mg'."""
+    text = re.sub(r"\([^)]*\)", " ", clean(text))  # "400mg/16ml (25mg/ml)": the bracket repeats it
+    text = re.sub(r"(?<=\d),(?=\d{3}(?!\d))", "", text)
+    return tuple(sorted(float(n.replace(",", ".")) for n in re.findall(r"\d+(?:[.,]\d+)?", text)))
+
+
+def join_moph(drugs: list[dict]) -> tuple[Counter, list[tuple[dict, dict]]]:
+    """Attach the MoPH web row to each price-list row when the match is unambiguous.
+    Key: normalized brand + strength numbers. When MoPH leaves strength empty, the
+    numbers come from its ingredient amounts ('Valsartan - 80mg, HCTZ - 12.5mg').
+    Ties: same form wins. Several rows that all say the same ingredients + ATC
+    (e.g. two pack sizes) count as one unambiguous answer."""
+    if not MOPH_WEB:
+        raise SystemExit("No data/moph-web-*.json snapshot. Run: python scripts/scrape-moph.py")
+    web = json.loads(MOPH_WEB[-1].read_text(encoding="utf-8"))
+    by_brand: dict[tuple, list[dict]] = {}
+    for w in web:
+        w["_numbers"] = strength_numbers(w["strength"] or re.sub(r"[A-Za-z]+\s*-", " ", w["ingredients"]))
+        by_brand.setdefault(brand_words(w["brand"]), []).append(w)
+
+    content = lambda w: (moph_ingredient(w["ingredients"]), w["atc"])
+    outcome, joined = Counter(), []
+    for d in drugs:
+        cands = by_brand.get(brand_words(d["brand"]), [])
+        if not cands:
+            outcome["no MoPH row with this brand"] += 1
+            continue
+        if d["strength"]:
+            same_strength = [w for w in cands if w["_numbers"] == strength_numbers(d["strength"])]
+        else:
+            # The price list gives no strength: use the brand's rows only if they all agree (checked below).
+            same_strength = cands
+        if not same_strength:
+            outcome["brand found, no row with this strength"] += 1
+            continue
+        pick = same_strength
+        if len({content(w) for w in pick}) > 1:  # break ties on form
+            form = brand_words(d["form"])
+            pick = [w for w in pick if brand_words(w["form"]) == form]
+        if not pick or len({content(w) for w in pick}) > 1 or not pick[0]["ingredients"]:
+            outcome["ambiguous (several different rows)"] += 1
+            continue
+        w = pick[0]
+        d.setdefault("_cands", {})["moph"] = moph_ingredient(w["ingredients"])
+        d["atc"] = w["atc"]
+        outcome["matched"] += 1
+        if not d["strength"]:
+            outcome["  of which: no strength in price list, all MoPH rows agree"] += 1
+        joined.append((d, w))
+    return outcome, joined
+
+
+# ---------------------------------------------------------------------------
+# Step 6: pick one ingredient per drug
+# ---------------------------------------------------------------------------
+
+PRIORITY = ["moph", "aman", "curated", "generic name"]
+
+
+def same_ingredient(a: str, b: str) -> bool:
+    """Tolerant comparison for conflict reports: 'metformin' == 'metformin hcl',
+    'atorvastatin' == 'atorvastatin (calcium)'; combinations must agree on every part."""
+    pa, pb = [set(re.findall(r"[a-z0-9]+", x)) for x in a.split(" + ")], [set(re.findall(r"[a-z0-9]+", x)) for x in b.split(" + ")]
+    return len(pa) == len(pb) and all(any(x <= y or y <= x for y in pb) for x in pa)
+
+
+def resolve_ingredients(drugs: list[dict], aliases: dict[str, str]) -> tuple[Counter, list[tuple]]:
+    chosen_from, conflicts = Counter(), []
+    for d in drugs:
+        cands = d.pop("_cands", {})
+        for source in PRIORITY:
+            if cands.get(source):
+                d["ingredient"] = cands[source]
+                chosen_from[source] += 1
+                break
+        if d["ingredient"]:
+            d["ingredient"] = " + ".join(aliases.get(p, p) for p in d["ingredient"].split(" + "))
+            for source, value in cands.items():
+                if not same_ingredient(d["ingredient"], aliases.get(value, value)):
+                    conflicts.append((d["brand"], d["strength"], d["ingredient"], source, value))
+    return chosen_from, conflicts
 
 
 # ---------------------------------------------------------------------------
@@ -392,22 +491,31 @@ def main() -> None:
 
     curated = apply_curated(drugs)
     print("\n== Curated list ==")
-    print(f"  applied (verified rows):  {curated['applied']} drugs got an ingredient")
-    print(f"  alias spelling fixes:     {curated['aliased']} drugs")
-    print(f"  still unverified rows:    {curated['unverified']}")
-    for brand, old, new in curated["conflicts"][:10]:
-        print(f"  CONFLICT kept existing: {brand!r} has {old!r}, curated says {new!r}")
+    print(f"  verified rows matching drugs: {curated['applied']}")
+    print(f"  still unverified rows:        {curated['unverified']}")
 
-    from_aman = sum(1 for d in drugs if d.get("_ingredient_from") == "aman")
-    from_generic = sum(1 for d in drugs if d.get("_ingredient_from") == "generic name")
-    from_curated = sum(1 for d in drugs if d.get("_ingredient_from") == "curated")
-    for d in drugs:
-        d.pop("_ingredient_from", None)
+    moph_outcome, joined = join_moph(drugs)
+    print(f"\n== MoPH website join ({MOPH_WEB[-1].name}) ==")
+    for k, v in moph_outcome.most_common():
+        print(f"  {k}: {v}")
+
+    chosen_from, conflicts = resolve_ingredients(drugs, curated["aliases"])
+    print(f"\n== Ingredient sources (priority {' > '.join(PRIORITY)}) ==")
+    for k in PRIORITY:
+        print(f"  {k}: {chosen_from[k]}")
+    print(f"  conflicts between sources: {len(conflicts)}")
+    for brand, strength, kept, source, other in conflicts[:15]:
+        print(f"    {brand} {strength}: kept {kept!r}; {source} said {other!r}")
+
+    print("\n== 10 random joined rows (spot-check) ==")
+    for d, w in random.Random(7).sample(joined, min(10, len(joined))):
+        print(f"  {d['brand']} {d['strength'] or '-'}  <->  {w['brand']} {w['strength'] or '-'}"
+              f"  | {d['ingredient']} | {d['atc']} | {w['url']}")
 
     ids = [d["id"] for d in drugs]
     assert len(ids) == len(set(ids)), "duplicate ids in output"
     for d in drugs:
-        assert list(d) == keys, f"row {d['id']} keys {list(d)} != Drug type {keys}"
+        assert list(d) == keys + ["atc"], f"row {d['id']} keys {list(d)} != Drug type {keys} + atc"
 
     drugs.sort(key=lambda d: (d["brand"].lower(), d["strength"], d["id"]))
     OUT.write_text(json.dumps(drugs, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
@@ -425,8 +533,9 @@ def main() -> None:
     print(f"AMAN rows matched:    {how['matched']}  ({how['of which via full-name tie-breaker']} of them via the full-name tie-breaker)")
     print(f"AMAN rows to review:  {len(review)}  {dict(reasons)}")
     print(f"covered = true:       {sum(d['covered'] for d in drugs)} drugs")
-    print(f"with ingredient:      {from_aman + from_generic + from_curated} drugs  "
-          f"(AMAN match: {from_aman}, generic name: {from_generic}, curated: {from_curated})")
+    print(f"with ingredient:      {sum(1 for d in drugs if d['ingredient'])} drugs")
+    print(f"with ATC code:        {sum(1 for d in drugs if d['atc'])} drugs")
+    print(f"no unique MoPH match: {len(drugs) - moph_outcome['matched']} price-list rows")
     print(f"file size:            {OUT.stat().st_size / 1024:.1f} KB  ({OUT.relative_to(ROOT)})")
     print(f"review file:          {REVIEW.relative_to(ROOT)}")
 
