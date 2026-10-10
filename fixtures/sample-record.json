@@ -1,13 +1,15 @@
 {
-  "v": 1,
-  "patient": { "name": "Fatima Haidar", "birthYear": 1962, "bloodType": "A+" },
+  "v": 2,
+  "id": "MP-7K3Q-92XD",
+  "cardVersion": 1,
+  "patient": { "name": "Fatima Haidar", "dateOfBirth": "1962-04-18", "sex": "F", "bloodType": "A+" },
   "emergency": { "allergies": ["Penicillin"], "critical": ["Insulin-dependent diabetes"] },
   "conditions": [
-    { "name": "Type 2 diabetes", "verified": "patient" },
+    { "name": "Type 2 diabetes", "verified": "clinician" },
     { "name": "Hypertension", "verified": "patient" }
   ],
   "meds": [
-    { "name": "Glucophage", "ingredient": "Metformin", "strength": "850 mg", "frequency": "twice daily", "status": "green", "verified": "patient" },
+    { "name": "Glucophage", "ingredient": "Metformin", "strength": "850 mg", "frequency": "twice daily", "status": "green", "verified": "clinician" },
     { "name": "Concor", "ingredient": "Bisoprolol", "strength": "5 mg", "frequency": "once daily", "status": "green", "verified": "patient" },
     { "name": "Lantus", "ingredient": "Insulin glargine", "strength": "18 IU", "frequency": "at bedtime", "status": "green", "verified": "patient" },
     { "name": "Coversyl", "ingredient": "Perindopril", "strength": "5 mg", "frequency": "once daily", "status": "green", "verified": "patient" }

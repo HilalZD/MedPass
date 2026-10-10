@@ -4,8 +4,9 @@
 // Pick or take 1–3 photos, send them to /api/extract, look at the result.
 
 import { useState } from "react";
-import type { MedPassRecord, Status } from "@/lib/types";
-import { resizeImage } from "@/app/onboard/resize";
+import type { Status } from "@/lib/types";
+import type { ExtractedDraft } from "@/lib/extract";
+import { resizeImage } from "@/lib/image";
 
 const MAX_PHOTOS = 3;
 
@@ -19,7 +20,7 @@ export default function DevExtractPage() {
   const [photos, setPhotos] = useState<string[]>([]); // resized data URLs
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [record, setRecord] = useState<MedPassRecord | null>(null);
+  const [record, setRecord] = useState<ExtractedDraft | null>(null);
   const [seconds, setSeconds] = useState(0);
 
   async function addFiles(files: FileList | null) {

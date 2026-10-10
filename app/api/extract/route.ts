@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
-import { SYSTEM_PROMPT, parseRecord, type ExtractedRecord } from "@/lib/extract";
+import { SYSTEM_PROMPT, parseDraft, type ExtractedDraft } from "@/lib/extract";
 
 // Reading 3 photos can take a while; give the function up to 2 minutes on Vercel.
 export const maxDuration = 120;
@@ -88,9 +88,9 @@ export async function POST(request: Request) {
       .map((b) => b.text)
       .join("");
 
-    let record: ExtractedRecord;
+    let record: ExtractedDraft;
     try {
-      record = parseRecord(text);
+      record = parseDraft(text);
     } catch {
       console.error(`extract: invalid JSON from model (attempt ${attempt})`);
       continue;
