@@ -54,6 +54,21 @@ export default function DetailsStep({
         />
       </CheckedField>
 
+      <label className="flex flex-col gap-1 rounded-xl border-2 border-gray-200 p-3 text-lg font-medium">
+        <span>
+          Arabic name (optional) · <span lang="ar">الاسم بالعربية</span>
+        </span>
+        <input
+          className={input}
+          dir="rtl"
+          lang="ar"
+          placeholder="كما هو مكتوب على هوية المريض"
+          value={p.nameAr ?? ""}
+          onChange={(e) => setPatient({ nameAr: e.target.value || undefined })}
+        />
+        <span className="text-base font-normal text-gray-600">Type it as written on the patient&apos;s ID. It is printed on the card.</span>
+      </label>
+
       <CheckedField
         label="Date of birth (optional)"
         confirmed={confirmed.dob || !p.dateOfBirth}

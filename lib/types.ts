@@ -16,7 +16,7 @@ export type MedPassRecord = {
   v: 2;
   id: string;            // MedPass ID printed on the card, e.g. "MP-7K3Q-92XD"
   cardVersion: number;   // +1 on every reissue
-  patient: { name: string; dateOfBirth?: string; sex?: "F" | "M"; bloodType?: string };
+  patient: { name: string; nameAr?: string; dateOfBirth?: string; sex?: "F" | "M"; bloodType?: string }; // nameAr: typed by a human, never auto-translated; printed on the card, not in the QR
   emergency: { allergies: string[]; critical: string[] }; // printed + NOT encrypted in the QR
   conditions: { name: string; verified: Verified }[];
   meds: Med[];

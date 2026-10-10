@@ -10,6 +10,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { PRINT_KEY, setPrintExtra } from "@/components/MedPassCard";
 import { encode, fitRecord } from "@/lib/card";
 import type { MedPassRecord } from "@/lib/types";
 import CardMeter, { cardIsFull } from "../../new/CardMeter";
@@ -88,7 +89,10 @@ export default function CardPanel({
 
       const fitted = fitRecord(body.record);
       const payload = await encode(fitted.record, pin); // about a second: strong PIN protection
-      sessionStorage.setItem("medpass:print", payload);
+      sessionStorage.setItem(PRINT_KEY, payload);
+      // Printed on the card but not inside the QR: Arabic name and sex. Never the PIN.
+      const printed = body.record as MedPassRecord;
+      setPrintExtra({ nameAr: printed.patient.nameAr, sex: printed.patient.sex });
       router.push("/print");
     } catch (e) {
       setError(e instanceof Error ? e.message : "No internet connection.");

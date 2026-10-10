@@ -10,7 +10,7 @@ import type { MedPassRecord } from "@/lib/types";
 import { ErrorBox, btn, input } from "../../new/ui";
 import RecordEditor from "./RecordEditor";
 
-export type PatientField = "name" | "dateOfBirth" | "sex" | "bloodType";
+export type PatientField = "name" | "nameAr" | "dateOfBirth" | "sex" | "bloodType";
 export type ReissueReason = "lost" | "update";
 
 export type LogEntry = { at: string; action: string; facility: string | null; clinician: string | null };

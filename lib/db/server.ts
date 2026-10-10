@@ -29,7 +29,7 @@ export type PatientRow = {
   verified_fields: PatientField[]; // patient details a clinician has checked/changed
 };
 
-export type PatientField = "name" | "dateOfBirth" | "sex" | "bloodType";
+export type PatientField = "name" | "nameAr" | "dateOfBirth" | "sex" | "bloodType";
 
 export type AccessLogRow = {
   id: number;

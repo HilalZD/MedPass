@@ -136,7 +136,7 @@ export async function getAccessLog(patientId: string, limit = 50): Promise<Acces
   }));
 }
 
-const PATIENT_FIELDS: PatientField[] = ["name", "dateOfBirth", "sex", "bloodType"];
+const PATIENT_FIELDS: PatientField[] = ["name", "nameAr", "dateOfBirth", "sex", "bloodType"];
 
 // Patient details that differ between two versions of a record.
 export function changedPatientFields(before: MedPassRecord, after: MedPassRecord): PatientField[] {
@@ -232,6 +232,7 @@ export const editedRecordSchema = z.object({
   cardVersion: z.number().int().min(1),
   patient: z.object({
     name: text(120).min(1),
+    nameAr: text(120).optional(),
     dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
     sex: z.enum(["F", "M"]).optional(),
     bloodType: z.enum(["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]).optional(),

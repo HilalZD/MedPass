@@ -320,6 +320,7 @@ function Header({ record, cardVersion, until, onLock }: { record: MedPassRecord;
 type Patient = MedPassRecord["patient"];
 const FIELDS: { key: PatientField; label: string }[] = [
   { key: "name", label: "Name" },
+  { key: "nameAr", label: "Arabic name" },
   { key: "dateOfBirth", label: "Date of birth" },
   { key: "sex", label: "Sex" },
   { key: "bloodType", label: "Blood type" },
@@ -367,6 +368,15 @@ function PatientDetails({
             {!editing && <span className="font-semibold" dir="auto">{show(key, patient[key])}</span>}
             {badge(key)}
           </div>
+          {editing && key === "nameAr" && (
+            <input
+              className={input}
+              dir="rtl"
+              lang="ar"
+              value={patient.nameAr ?? ""}
+              onChange={(e) => onChange({ ...patient, nameAr: e.target.value || undefined })}
+            />
+          )}
           {editing && key === "name" && (
             <input className={input} dir="auto" value={patient.name} onChange={(e) => onChange({ ...patient, name: e.target.value })} />
           )}

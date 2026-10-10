@@ -6,6 +6,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { PRINT_KEY, setPrintExtra } from "@/components/MedPassCard";
 import { encode, fitRecord } from "@/lib/card";
 import type { MedPassRecord } from "@/lib/types";
 import CardMeter, { cardIsFull } from "./CardMeter";
@@ -33,7 +34,9 @@ export default function DoneStep({ record, pin, onAnother }: { record: MedPassRe
     setError("");
     try {
       const payload = await encode(fit.record, pin); // takes about a second: strong PIN protection
-      sessionStorage.setItem("medpass:print", payload);
+      sessionStorage.setItem(PRINT_KEY, payload);
+      // Printed on the card but not inside the QR: Arabic name and sex. Never the PIN.
+      setPrintExtra({ nameAr: record.patient.nameAr, sex: record.patient.sex });
       router.push("/print");
     } catch {
       setError("Could not prepare the card. Please try again.");
