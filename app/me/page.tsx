@@ -104,7 +104,7 @@ function Login({ onOpen, expired }: { onOpen: (d: Payload) => void; expired: boo
           />
         </div>
       )}
-      <DemoHint card="own" />
+      <DemoHint />
 
       <label className="flex flex-col gap-2 text-lg font-medium">
         <Bi en="Your MedPass ID" ar="رقم ميدباس الخاص بك" />

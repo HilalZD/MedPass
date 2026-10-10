@@ -18,8 +18,10 @@
 import { readFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 import bcrypt from "bcryptjs";
-import { DEMO_PATIENT } from "../lib/demo";
 import type { MedPassRecord } from "../lib/types";
+
+// Fatima's demo record (fictional). Kept here: it is no longer shown in the app's demo hint.
+const DEMO_PATIENT = { id: "MP-Z8EX-SN4Y", pin: "123456" };
 
 const TYRE = "11111111-1111-1111-1111-111111111111"; // facilities seeded in supabase/schema.sql
 const BEIRUT = "22222222-2222-2222-2222-222222222222";
